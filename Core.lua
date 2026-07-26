@@ -5,6 +5,8 @@ local TAB_ID = "ShoppingConverterTab"
 local DEFAULT_LIST_NAME = "CraftSim CraftQueue"
 
 local IsAddOnLoadedCompat = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
+local GetAddOnMetadataCompat = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+local ADDON_VERSION = GetAddOnMetadataCompat(ADDON_NAME, "Version") or "?"
 
 ShoppingConverterDB = ShoppingConverterDB or {}
 
@@ -347,6 +349,10 @@ local function CreateTabContent()
   editBox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
   scrollFrame.CharCount:Hide()
 
+  local versionText = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+  versionText:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 4)
+  versionText:SetText("v" .. ADDON_VERSION)
+
   frame:SetScript("OnShow", function()
     -- Only safe to read the scroll frame's real width once it (and its
     -- ancestors) have actually been laid out, which is guaranteed by the
@@ -469,7 +475,13 @@ end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
-eventFrame:SetScript("OnEvent", function(_, _, panelType)
+eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:SetScript("OnEvent", function(_, event, panelType)
+  if event == "PLAYER_LOGIN" then
+    print(("|cff33ff99%s|r v%s loaded."):format(ADDON_NAME, ADDON_VERSION))
+    return
+  end
+
   if panelType == Enum.PlayerInteractionType.Auctioneer then
     CreateShoppingConverterTab()
     -- Deferred a frame: other addons that also add AH tabs off this

@@ -2,6 +2,14 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.2.2]
+
+### Added
+- The addon version now shows in the bottom-right corner of the
+  Converter tab, and is printed to chat on login.
+- MIT `LICENSE` file for the addon's own code, separate from the
+  third-party license notices in `ATTRIBUTIONS.md`.
+
 ## [1.2.1]
 
 ### Fixed

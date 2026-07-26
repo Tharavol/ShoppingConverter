@@ -2,11 +2,15 @@
 ## Title: Shopping Converter
 ## Notes: Adds an Auction House tab that converts an Auctionator shopping list into a TradeSkillMaster-compatible search string.
 ## Author: Thaaravol, Claude
-## Version: 1.2.1
+## Version: 1.2.2
 ## SavedVariables: ShoppingConverterDB
 ## OptionalDeps: Auctionator, TradeSkillMaster
 
 # Release Notes
+#
+# 1.2.2
+# - The addon's version is now shown in the corner of the Converter tab,
+#   and printed to chat on login.
 #
 # 1.0.0
 # - Adds a "TSM Convert" tab to the Blizzard Auction House frame (via

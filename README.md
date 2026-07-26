@@ -59,4 +59,5 @@ line shows progress while the conversion completes asynchronously.
 
 ## License
 
-See [ATTRIBUTIONS.md](ATTRIBUTIONS.md) for third-party library licenses.
+MIT — see [LICENSE](LICENSE). Third-party libraries embedded in `Libs/`
+are under their own licenses; see [ATTRIBUTIONS.md](ATTRIBUTIONS.md).

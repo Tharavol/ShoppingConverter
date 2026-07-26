@@ -2,6 +2,78 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.3.0]
+
+### Added
+- Item IDs are now read directly from CraftSim's craft queue when CraftSim
+  is installed. CraftSim already knows the exact item ID and quality of
+  every reagent it queued and discards that when it writes the Auctionator
+  shopping list as plain names, which is what forced the slow live Auction
+  House lookups in the first place. Converting the `CraftSim CraftQueue`
+  list is now effectively instant, with no Auction House traffic.
+- Resolved item IDs are cached in saved variables and reused between
+  sessions, so a queue that grows over time only ever looks up the items
+  it hasn't seen before. The cache is dropped whenever the game build
+  changes, since a patch can move item IDs.
+- Output longer than TSM's search box will take is split into parts, with
+  `<` / `>` buttons to page through them and paste one at a time.
+- Auctionator filters with no TSM search-string equivalent (price caps,
+  level and item level ranges, category, expansion) are now counted and
+  reported instead of being silently discarded.
+- `/shopconv` slash command: jump to the tab, list shopping lists, convert
+  a list into a copyable window without the Auction House open, inspect or
+  clear the item cache, and toggle the CraftSim lookup, the cache, and the
+  login message.
+- Offline test suite for the conversion logic and the item cache
+  (`lua Tests/run.lua`), with the resolver injected as a stub.
+
+### Fixed
+- Live Auction House lookups could return the wrong item. Browse queries
+  match on substring, so searching `Ironclaw Ore` also returns
+  `Ironclaw Ore Fragment`, and the first result was accepted regardless of
+  its name. Results are now verified against the term's actual name, and a
+  substring match is only accepted for a term Auctionator did not flag as
+  exact, and only once the result set is known to be complete.
+- The query timeout defeated the query lock it was meant to protect: it
+  released the lock while the abandoned query was still in flight, so the
+  next query could start and misread the old one's results. The lock is
+  now held until the Auction House actually finishes with the abandoned
+  query.
+- Sending a browse query while the server throttle was active threw, and
+  the error was swallowed and misreported as "item not found". The
+  throttle is now checked and waited on.
+- Leaving the Converter tab or closing the Auction House mid-conversion
+  left live queries running, competing with whatever the player did next.
+  Conversions are now aborted on both.
+- The Auction House window is restored to its original width when closed,
+  instead of staying widened for every other addon that measures it.
+
+### Changed
+- Split the single `Core.lua` into `Core`, `Cache`, `Resolver`,
+  `Converter`, `UI` and `AHTab` modules sharing the addon namespace. The
+  conversion logic no longer touches the game API directly, which is what
+  makes the offline tests possible.
+- Replaced the deprecated `UIDropDownMenu` with Blizzard's current
+  `WowStyle1DropdownTemplate` / menu API. The old one has been deprecated
+  since 11.0, survives on a compatibility shim, and is a known taint
+  vector.
+- The output box no longer steals keyboard focus when the tab opens, which
+  used to swallow movement keys until you pressed Escape. Use the new
+  **Select All** button instead.
+- The login message is now off by default; re-enable it with
+  `/shopconv login on`.
+- Auctionator is declared as a hard dependency rather than an optional
+  one, so a missing or disabled Auctionator gives a clear message in the
+  addon list instead of a silent failure at runtime. TradeSkillMaster is
+  no longer listed at all — the addon never calls into it, it only
+  produces text for it. CraftSim is listed as an optional dependency.
+- Tab ordering and the Auction House width fix reach into LibAHTab's
+  private state, so they are now pinned to the library minor version they
+  were written against and skipped on anything newer, rather than risking
+  an error on a changed structure.
+- Release notes are no longer duplicated in the `.toc`; this file is the
+  only copy.
+
 ## [1.2.2]
 
 ### Added

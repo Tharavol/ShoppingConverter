@@ -12,21 +12,26 @@ search string, ready to paste into TSM.
 - Reads a shopping list from Auctionator through its public API and
   converts each entry to TSM's `i:<itemID>/x<qty>` search syntax, joined
   with semicolons.
-- Auto-populates a copyable, select-all text box as soon as the tab is
-  opened.
-- Dropdown to pick which Auctionator shopping list to convert. Defaults
-  to a list named "CraftSim CraftQueue" if one exists, otherwise
-  remembers the last list you picked (saved per account).
-- Preserves crafting-reagent quality (Auctionator's tier field): items
-  with a quality requirement, or that aren't in the local item cache,
-  are resolved via a live Auction House search so the correct quality
-  rank is picked rather than guessed from name alone.
-- Refresh button to re-run the conversion on demand.
+- Preserves crafting-reagent quality (Auctionator's tier field), so a
+  rank 1 reagent doesn't silently become rank 3.
+- Reads item IDs straight out of [CraftSim](https://www.curseforge.com/wow/addons/craftsim)'s
+  craft queue when it's installed, making the common case instant.
+- Caches every resolved item ID across sessions, so repeat conversions of
+  an evolving craft queue don't re-query the Auction House.
+- Splits output too long for TSM's search box into parts you can page
+  through and paste one at a time.
+- Dropdown to pick which shopping list to convert, a Refresh button, and a
+  `/shopconv` command for use away from the Auction House.
 
 ## Requirements
 
-- [Auctionator](https://www.curseforge.com/wow/addons/auctionator) (required — the addon reads shopping lists through its API)
-- [TradeSkillMaster](https://www.tradeskillmaster.com/) (optional — this is the tool the output string is meant for)
+- [Auctionator](https://www.curseforge.com/wow/addons/auctionator) — required.
+  The addon reads shopping lists through its API and will not load without it.
+- [CraftSim](https://www.curseforge.com/wow/addons/craftsim) — optional, but
+  makes conversion of its `CraftSim CraftQueue` list dramatically faster.
+- [TradeSkillMaster](https://www.tradeskillmaster.com/) — optional; this is
+  the tool the output string is meant for. Shopping Converter never calls
+  into TSM, it just produces text.
 
 ## Installation
 
@@ -40,22 +45,69 @@ search string, ready to paste into TSM.
 1. Open the Auction House.
 2. Click the **Converter** tab.
 3. Pick a shopping list from the dropdown.
-4. The TSM search string is generated automatically and selected in the
-   text box — copy it and paste it into TSM's search field.
+4. The TSM search string is generated automatically. Click **Select All**,
+   copy it, and paste it into TSM's search field.
 5. Click **Refresh** to re-run the conversion at any time.
+
+If the string was split into several parts, use the **`<`** and **`>`**
+buttons to page through them and paste each one separately.
+
+### Slash commands
+
+| Command | Effect |
+| --- | --- |
+| `/shopconv` | Jump to the Converter tab (Auction House must be open) |
+| `/shopconv lists` | List the available Auctionator shopping lists |
+| `/shopconv convert <name>` | Convert a list into a copyable window, no AH needed |
+| `/shopconv cache` | Show item cache statistics |
+| `/shopconv cache clear` | Empty the item cache |
+| `/shopconv cache on\|off` | Reuse resolved item IDs between sessions |
+| `/shopconv craftsim on\|off` | Read item IDs from CraftSim's craft queue |
+| `/shopconv login on\|off` | Print a version message at login |
 
 ## How it works
 
-For each item in the shopping list, the addon first tries a local,
-synchronous item lookup. If the item has no quality-tier requirement, or
-the locally resolved item's tier matches what was asked for, that result
-is used directly. Otherwise (an ambiguous tier, or an item not cached
-locally), it falls back to a live Auction House browse query — the same
-approach Auctionator itself uses — to find the itemID whose quality rank
-actually matches. Items that can't be resolved either way fall back to a
-plain name search term so nothing is silently dropped. Live lookups are
-serialized with a short courtesy delay between queries, so the status
-line shows progress while the conversion completes asynchronously.
+The hard part is turning an item *name* into an item *ID*, because that's
+all an Auctionator shopping list stores. Crafting reagents make it harder:
+each quality rank is a separate item ID sharing one display name, so a name
+lookup alone can silently resolve to the wrong rank.
+
+Shopping Converter tries four sources, cheapest first:
+
+1. **CraftSim's craft queue.** CraftSim already knows the exact item ID and
+   quality of every reagent it queued, and discards that when it writes the
+   Auctionator list as plain names. Reading the queue back recovers them for
+   free, with no Auction House traffic at all.
+2. **The persistent cache**, keyed by name and quality rank and dropped
+   whenever the game build changes.
+3. **A local client lookup**, which only works for items already in the
+   client's item cache.
+4. **A live Auction House browse query** — correct but slow, and it replaces
+   whatever you had searched on the Browse tab. Queries are serialized one at
+   a time with a courtesy delay, respect the server's throttle, and verify
+   the returned item's name and quality rank actually match what was asked
+   for (browse queries match on substring, so `Ironclaw Ore` will also
+   return `Ironclaw Ore Fragment`).
+
+Anything that still can't be resolved falls back to a plain name search term
+rather than being dropped, and the status line says how many did so.
+
+Auctionator search terms can also carry price caps, level ranges and
+category filters that have no TSM search-string equivalent. Those are
+counted and reported rather than silently discarded.
+
+## Development
+
+The conversion logic and the item cache have no dependency on the game
+client and are covered by an offline test suite:
+
+```sh
+lua Tests/run.lua
+```
+
+The resolver is injected as a stub, so the tests exercise term parsing,
+quality-rank handling, delimiter escaping, ordering across asynchronous
+resolutions, and output chunking without WoW running.
 
 ## License
 

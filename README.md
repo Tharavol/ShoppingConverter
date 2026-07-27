@@ -45,8 +45,9 @@ search string, ready to paste into TSM.
 1. Open the Auction House.
 2. Click the **Converter** tab.
 3. Pick a shopping list from the dropdown.
-4. The TSM search string is generated automatically. Click **Select All**,
-   copy it, and paste it into TSM's search field.
+4. The TSM search string is generated automatically and selected as soon as
+   it's ready - copy it and paste it into TSM's search field. Click
+   **Select All** to reselect it later.
 5. Click **Refresh** to re-run the conversion at any time.
 
 If the string was split into several parts, use the **`<`** and **`>`**

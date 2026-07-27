@@ -192,6 +192,13 @@ function UI:Refresh()
       local status, warning = DescribeResult(result)
       statusText:SetText(status)
       warningText:SetText(warning or "")
+      if result.total > 0 then
+        -- Unlike the tab opening, the player asked for this: the string is
+        -- now ready and copying it is the whole point, so grab focus and
+        -- select it instead of waiting on the Select All button.
+        pane.editBox:SetFocus()
+        pane.editBox:HighlightText()
+      end
     end,
     function(index, total)
       statusText:SetText(("Looking up item %d of %d at the Auction House..."):format(index, total))

@@ -2,6 +2,15 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.3.1]
+
+### Changed
+- The output box now takes focus and selects its text as soon as a
+  conversion finishes, instead of waiting for the player to click
+  **Select All**. This is separate from the 1.3.0 change that stopped it
+  from stealing focus when the tab merely opens - that still applies, since
+  opening the tab isn't the player asking for the string.
+
 ## [1.3.0]
 
 ### Added

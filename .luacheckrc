@@ -2,8 +2,10 @@ std = "lua51"
 max_line_length = 120
 
 -- LibStub and LibAHTab are vendored verbatim under Libs/ so the repository can
--- be cloned straight into Interface/AddOns; they are not ours to lint.
-exclude_files = {"Libs/**"}
+-- be cloned straight into Interface/AddOns; they are not ours to lint. The
+-- luarocks CI action installs into .luarocks/ inside the workspace, so
+-- `luacheck .` would otherwise lint the toolchain too.
+exclude_files = {"Libs/**", ".luarocks/**", ".luarocks", "lua_modules/**"}
 
 -- WoW event handlers always receive (self, event, ...); ignore unused args
 -- entirely since callbacks must match Blizzard's fixed signatures.

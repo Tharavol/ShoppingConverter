@@ -2,6 +2,15 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.3.2]
+
+Packaging and tooling only — no functional changes.
+
+### Changed
+- Releases are now built by [BigWigsMods/packager](https://github.com/BigWigsMods/packager), so the zip contains only what the addon needs — `.github/`, `.luacheckrc`, `.pkgmeta` and `Tests/` no longer ship.
+- The version in the TOC now comes from the release tag rather than being maintained by hand, so it can no longer disagree with the release it was published under. Versions now carry a leading `v`.
+- Added GitHub Actions running luacheck and the offline test suite on every push and pull request.
+
 ## [1.3.1]
 
 ### Changed

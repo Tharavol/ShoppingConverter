@@ -1,2 +1,18 @@
-# Local, personal test plan - not part of the addon.
-TESTPLAN.md
+# OS junk
+Thumbs.db
+desktop.ini
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# Claude / AI tool scratch files
+.claude/
+CLAUDE.md
+*_artifact*
+scratch/
+fixes.md
+
+# Packaging output
+.release/
+*.zip

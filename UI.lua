@@ -119,9 +119,13 @@ local function DescribeResult(result)
   end
 
   local warnings = {}
-  if result.unresolved > 0 then
+  if result.sources.none > 0 then
     table.insert(warnings, ("%d matched by name only - no item ID found, so quality rank may be wrong")
-      :format(result.unresolved))
+      :format(result.sources.none))
+  end
+  if result.sources.closed > 0 then
+    table.insert(warnings, ("%d could not be looked up - the Auction House was closed")
+      :format(result.sources.closed))
   end
   if result.droppedFilters > 0 then
     table.insert(warnings, ("%d Auctionator filter(s) dropped - price and level limits have no TSM search equivalent")
@@ -277,7 +281,7 @@ function UI:CreateTabContent()
 
   local versionText = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
   versionText:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 4)
-  versionText:SetText("v" .. ns.VERSION)
+  versionText:SetText(ns.VERSION)
 
   frame:SetScript("OnShow", function()
     -- Only safe to read the scroll frame's real width once it (and its

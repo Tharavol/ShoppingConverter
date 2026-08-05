@@ -2,6 +2,32 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.4.0]
+
+### Fixed
+- The version shown in the AH tab and at login was wrong in every build
+  since 1.3.2 (`vv1.3.2` in packaged releases, `v@project-version@` in dev
+  installs) — the packager substitutes the version keyword with the release
+  tag verbatim, which already carries a `v` prefix, and the hand-written `v`
+  doubled it. Version formatting is now handled by a single, tested
+  function.
+- Converting with the Auction House closed spent 0.6 seconds pacing a live
+  lookup for every unresolved item even though no query was ever sent,
+  turning a large cold-cache conversion into a multi-minute stall with no
+  status output on the slash-command path. Items now skip straight to the
+  name fallback when the Auction House isn't open, and the status line
+  distinguishes "matched by name only" from "the Auction House was closed".
+- Items a live Auction House query couldn't resolve are now remembered for
+  the rest of the session, so a shopping list with a few unresolvable items
+  no longer pays for a fresh browse query (plus the pacing delay) on every
+  conversion.
+- `## Author:` in the TOC was misspelled `Thaaravol`.
+
+### Changed
+- Added a `BigWigsMods/packager` dry run to CI, so a packaging regression
+  (like the version doubling above) is caught on every pull request instead
+  of only once a release is already being cut.
+
 ## [1.3.2]
 
 Packaging and tooling only — no functional changes.

@@ -27,3 +27,11 @@ jobs:
       # Offline suite: the resolver is stubbed, so no game client is needed.
       - name: Tests
         run: lua Tests/run.lua
+
+      # Dry run only: validates .pkgmeta, TOC directives and keyword
+      # substitution without uploading anything or needing credentials. Catches
+      # packaging regressions (e.g. #3) on every PR instead of only at release.
+      - name: Package (dry run)
+        uses: BigWigsMods/packager@v2
+        with:
+          args: -d

@@ -51,6 +51,7 @@ ns.db = {
   itemCache = {},
 }
 
+stubs.loadModule(here .. "/../Version.lua", "ShoppingConverter", ns)
 stubs.loadModule(here .. "/../Cache.lua", "ShoppingConverter", ns)
 stubs.loadModule(here .. "/../Converter.lua", "ShoppingConverter", ns)
 
@@ -257,6 +258,24 @@ do
   equals(result.liveQueries, 1, "only the slow item counts as a live query")
 end
 
+do
+  -- AH closed: the resolver reports no live query is needed (nothing to
+  -- pace) even though the item can't be resolved from any other source.
+  local result = convert(
+    { searchString { name = '"Mystery Widget"', quantity = 1 } },
+    {
+      BeginSession = function() end,
+      NeedsLiveQuery = function() return false end,
+      Resolve = function(_, term, callback) callback(nil, "closed") end,
+      Abort = function() end,
+    }
+  )
+
+  equals(result.tsm, "Mystery Widget/x1", "an AH-closed item still falls back to its name")
+  equals(result.liveQueries, 0, "an AH-closed item is not counted as a live query")
+  equals(result.sources.closed, 1, "an AH-closed source is tracked separately from a live miss")
+end
+
 --------------------------------------------------------------------------
 -- Chunking
 --------------------------------------------------------------------------
@@ -287,6 +306,19 @@ do
   equals(table.concat(result.chunks, ";"), result.tsm,
     "chunks rejoin into exactly the full string")
   equals(result.total, 200, "every item survives chunking")
+end
+
+--------------------------------------------------------------------------
+-- Version formatting
+--------------------------------------------------------------------------
+
+do
+  equals(ns.FormatVersion("1.4.0"), "v1.4.0", "a bare version number gets a v prefix")
+  equals(ns.FormatVersion("v1.4.0"), "v1.4.0", "a tag that already has a v prefix isn't doubled")
+  equals(ns.FormatVersion("V1.4.0"), "v1.4.0", "an uppercase V prefix is normalized to lowercase")
+  equals(ns.FormatVersion("@project-version@"), "vdev", "an unsubstituted placeholder falls back to vdev")
+  equals(ns.FormatVersion(nil), "vdev", "a missing version falls back to vdev")
+  equals(ns.FormatVersion(""), "vdev", "an empty version falls back to vdev")
 end
 
 --------------------------------------------------------------------------

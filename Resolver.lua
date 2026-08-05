@@ -84,6 +84,28 @@ local function TierMatches(itemID, term)
 end
 
 --------------------------------------------------------------------------
+-- Session-scoped miss cache
+--
+-- A term that a live query genuinely couldn't resolve would otherwise pay
+-- for another full browse query - plus the pacing delay - every time it's
+-- seen again in the same session. Not persisted to ns.Cache: unlike a
+-- successful resolution, a miss isn't stable for the life of a game build.
+-- It can mean "no such item" or merely "nobody is selling one right now",
+-- and persisting the latter would permanently poison the cache for an item
+-- that's fine.
+--------------------------------------------------------------------------
+
+local missIndex = {}
+
+local function IsKnownMiss(term)
+  return missIndex[BuildKey(term.searchString, term.tier)] == true
+end
+
+local function MarkMiss(term)
+  missIndex[BuildKey(term.searchString, term.tier)] = true
+end
+
+--------------------------------------------------------------------------
 -- Source 1: CraftSim's craft queue
 --------------------------------------------------------------------------
 
@@ -424,6 +446,7 @@ end
 -- changes whenever the player queues or crafts something.
 function Resolver:BeginSession()
   craftSimIndex = BuildCraftSimIndex()
+  missIndex = {}
 end
 
 function Resolver:CraftSimIndexSize()
@@ -436,15 +459,21 @@ end
 
 -- True when resolving this term would need a live Auction House query, i.e.
 -- when it is going to be slow. Lets the caller decide whether to show
--- progress, and whether a conversion is worth starting at all.
+-- progress, and whether a conversion is worth starting at all. False when
+-- the Auction House isn't open: no query could be sent regardless of what
+-- the cheap sources find, so there's nothing to pace or show progress for.
 function Resolver:NeedsLiveQuery(term)
-  return ResolveFromCraftSim(term) == nil
+  return IsAuctionHouseAvailable()
+    and not IsKnownMiss(term)
+    and ResolveFromCraftSim(term) == nil
     and ns.Cache:Get(term.searchString, term.tier) == nil
     and ResolveLocally(term) == nil
 end
 
 -- Calls callback(itemID or nil, source) exactly once. `source` is one of
--- "craftsim", "cache", "local", "live" or "none".
+-- "craftsim", "cache", "local", "live", "closed" or "none". "closed" means
+-- the Auction House wasn't open to query, as distinct from "none", which
+-- means it was queried and came up empty.
 function Resolver:Resolve(term, callback)
   local itemID = ResolveFromCraftSim(term)
   if itemID then
@@ -466,6 +495,16 @@ function Resolver:Resolve(term, callback)
     return
   end
 
+  if not IsAuctionHouseAvailable() then
+    callback(nil, "closed")
+    return
+  end
+
+  if IsKnownMiss(term) then
+    callback(nil, "none")
+    return
+  end
+
   local myGeneration = generation
   ResolveLive(term, function(liveID)
     if myGeneration ~= generation then
@@ -475,6 +514,7 @@ function Resolver:Resolve(term, callback)
       ns.Cache:Set(term.searchString, term.tier, liveID)
       callback(liveID, "live")
     else
+      MarkMiss(term)
       callback(nil, "none")
     end
   end)

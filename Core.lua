@@ -7,7 +7,7 @@ ns.CALLER_ID = ADDON_NAME
 
 local GetAddOnMetadataCompat = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
 ns.IsAddOnLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
-ns.VERSION = GetAddOnMetadataCompat(ADDON_NAME, "Version") or "?"
+ns.VERSION = ns.FormatVersion(GetAddOnMetadataCompat(ADDON_NAME, "Version"))
 
 -- The shopping list CraftSim generates from its craft queue
 -- (CraftSim.CONST.AUCTIONATOR_SHOPPING_LIST_QUEUE_NAME). Preferred as the
@@ -77,7 +77,7 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
   if event == "PLAYER_LOGIN" then
     ns.Cache:Prepare()
     if ns.db.settings.printOnLogin then
-      ns.Print("v%s loaded. |cffaaaaaa/shopconv|r for options.", ns.VERSION)
+      ns.Print("%s loaded. |cffaaaaaa/shopconv|r for options.", ns.VERSION)
     end
     return
   end
@@ -107,7 +107,7 @@ end)
 --------------------------------------------------------------------------
 
 local function PrintUsage()
-  ns.Print("v%s commands:", ns.VERSION)
+  ns.Print("%s commands:", ns.VERSION)
   print("  |cffffff00/shopconv|r - open the Converter tab (Auction House must be open)")
   print("  |cffffff00/shopconv lists|r - show the available Auctionator shopping lists")
   print("  |cffffff00/shopconv convert <name>|r - convert a list into a copyable window")

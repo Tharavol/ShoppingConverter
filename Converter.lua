@@ -163,7 +163,7 @@ local LIVE_QUERY_INTERVAL = 0.6
 --   result = {
 --     listName, tsm, chunks,
 --     total, resolved, unresolved,
---     sources = { craftsim, cache, ["local"], live, none },
+--     sources = { craftsim, cache, ["local"], live, closed, none },
 --     droppedFilters, liveQueries,
 --   }
 --
@@ -180,7 +180,7 @@ function Converter:Build(listName, onComplete, onProgress)
     total = 0,
     resolved = 0,
     unresolved = 0,
-    sources = { craftsim = 0, cache = 0, ["local"] = 0, live = 0, none = 0 },
+    sources = { craftsim = 0, cache = 0, ["local"] = 0, live = 0, closed = 0, none = 0 },
     droppedFilters = 0,
     liveQueries = 0,
   }

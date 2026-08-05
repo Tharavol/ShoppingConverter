@@ -1,7 +1,7 @@
 ## Interface: 120007
 ## Title: Shopping Converter
 ## Notes: Adds an Auction House tab that converts an Auctionator shopping list into a TradeSkillMaster-compatible search string.
-## Author: Thaaravol, Claude
+## Author: Tharavol, Claude
 ## Version: @project-version@
 ## Category-enUS: Auction House
 ## X-License: MIT
@@ -14,6 +14,7 @@
 Libs\LibStub\LibStub.lua
 Libs\LibAHTab\LibAHTab.xml
 
+Version.lua
 Core.lua
 Cache.lua
 Resolver.lua

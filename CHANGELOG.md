@@ -2,7 +2,7 @@
 
 All notable changes to this addon are documented in this file.
 
-## [Unreleased]
+## [1.5.0]
 
 Packaging and internals only — no player-visible change.
 

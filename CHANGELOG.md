@@ -6,11 +6,11 @@ All notable changes to this addon are documented in this file.
 
 ### Fixed
 - The version shown in the AH tab and at login was wrong in every build
-  since 1.3.2 (`vv1.3.2` in packaged releases, `v@project-version@` in dev
-  installs) — the packager substitutes the version keyword with the release
-  tag verbatim, which already carries a `v` prefix, and the hand-written `v`
-  doubled it. Version formatting is now handled by a single, tested
-  function.
+  since 1.3.2 — doubled to `vv1.3.2` in packaged releases, and showing the
+  raw, unsubstituted TOC placeholder in dev installs. The packager
+  substitutes the version keyword with the release tag verbatim, which
+  already carries a `v` prefix, and the hand-written `v` doubled it.
+  Version formatting is now handled by a single, tested function.
 - Converting with the Auction House closed spent 0.6 seconds pacing a live
   lookup for every unresolved item even though no query was ever sent,
   turning a large cold-cache conversion into a multi-minute stall with no

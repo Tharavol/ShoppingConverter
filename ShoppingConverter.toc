@@ -16,6 +16,7 @@ Libs\LibAHTab\LibAHTab.xml
 
 Version.lua
 Core.lua
+Commands.lua
 Cache.lua
 Resolver.lua
 Converter.lua

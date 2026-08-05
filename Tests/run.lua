@@ -37,12 +37,16 @@ end
 -- Module loading
 --------------------------------------------------------------------------
 
+local printedMessages = {}
+
 local ns = {
   ADDON_NAME = "ShoppingConverter",
   CALLER_ID = "ShoppingConverter",
   VERSION = "test",
   DEFAULT_LIST_NAME = "CraftSim CraftQueue",
-  Print = function() end,
+  Print = function(fmt, ...)
+    table.insert(printedMessages, select("#", ...) > 0 and fmt:format(...) or fmt)
+  end,
   IsAddOnLoaded = function() return true end,
 }
 
@@ -357,6 +361,109 @@ do
   ns.Cache:Set("Bismuth", nil, 210796)
   equals(ns.Cache:Get("Bismuth", nil), nil, "a disabled cache stores nothing")
   ns.db.settings.useCache = true
+end
+
+--------------------------------------------------------------------------
+-- Slash commands
+--------------------------------------------------------------------------
+
+-- Commands.lua doesn't call CreateFrame or touch SlashCmdList itself (that
+-- stays in Core.lua, which isn't loaded here), so it's loadable the same
+-- way as the other pure modules. ns.AHTab and ns.UI are faked just enough
+-- to exercise the two handlers that reach into them.
+local ahTabSelected
+ns.AHTab = {
+  SelectTab = function(_self)
+    ahTabSelected = true
+    return true
+  end,
+}
+
+local shownDialog
+ns.UI = {
+  ShowCopyDialog = function(_self, result, title)
+    shownDialog = { result = result, title = title }
+  end,
+}
+
+stubs.loadModule(here .. "/../Commands.lua", "ShoppingConverter", ns)
+
+local originalPrint = print
+local plainLines
+
+-- Dispatches one command, capturing both ns.Print (into printedMessages)
+-- and the bare print() calls PrintUsage and "lists" use (into plainLines).
+local function dispatch(input)
+  printedMessages = {}
+  plainLines = {}
+  print = function(msg) table.insert(plainLines, msg) end
+  ns.Commands:Dispatch(input)
+  print = originalPrint
+  stubs.drainTimers()
+end
+
+do
+  dispatch("bogus")
+  equals(#plainLines, 8, "an unknown command falls back to usage, one line per help entry")
+  equals(plainLines[1], "  |cffffff00/shopconv|r - open the Converter tab (Auction House must be open)",
+    "usage is generated from the same table Dispatch matches against")
+end
+
+do
+  ahTabSelected = false
+  dispatch("")
+  check(ahTabSelected, "an empty command opens the Converter tab")
+  equals(#printedMessages, 0, "opening the tab prints nothing when it succeeds")
+end
+
+do
+  dispatch("lists")
+  equals(printedMessages[1], "No Auctionator shopping lists found.",
+    "lists reports when there are none")
+end
+
+do
+  dispatch("convert")
+  equals(#printedMessages, 1, "convert with no list name prints a usage message")
+end
+
+do
+  shownDialog = nil
+  currentList["Test"] = { searchString { name = '"Bismuth"', quantity = 5 } }
+  ns.Resolver = makeResolver({ ["Bismuth|0"] = 210796 })
+
+  dispatch("Convert Test")
+
+  check(shownDialog ~= nil, "convert opens the copy dialog for a non-empty list")
+  equals(shownDialog and shownDialog.title, "ShoppingConverter - Test",
+    "the list name reaches the dialog in its original case despite the command being mixed-case")
+end
+
+do
+  ns.Cache:Set("Widget", nil, 55555)
+  dispatch("cache clear")
+  equals(ns.Cache:Count(), 0, "cache clear empties the item cache")
+end
+
+do
+  dispatch("CACHE OFF")
+  equals(ns.db.settings.useCache, false, "cache on/off is matched case-insensitively")
+  dispatch("cache on")
+  equals(ns.db.settings.useCache, true, "cache on re-enables the cache")
+end
+
+do
+  dispatch("craftsim off")
+  equals(ns.db.settings.useCraftSim, false, "craftsim off disables CraftSim lookups")
+  dispatch("craftsim on")
+  equals(ns.db.settings.useCraftSim, true, "craftsim on re-enables CraftSim lookups")
+end
+
+do
+  dispatch("login on")
+  equals(ns.db.settings.printOnLogin, true, "login on enables the login message")
+  dispatch("login off")
+  equals(ns.db.settings.printOnLogin, false, "login off disables the login message")
 end
 
 --------------------------------------------------------------------------

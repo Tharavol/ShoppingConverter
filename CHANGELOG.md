@@ -2,6 +2,23 @@
 
 All notable changes to this addon are documented in this file.
 
+## [Unreleased]
+
+Packaging and internals only — no player-visible change.
+
+### Changed
+- The slash-command handlers moved out of `Core.lua`'s if-chain into a
+  table of `{ name, help, handler }` in a new `Commands.lua`, so the usage
+  text printed by `/shopconv` is generated from the same data the
+  dispatcher matches against instead of a hand-maintained copy that could
+  silently drift out of sync. The input is now parsed once instead of
+  twice. `Commands.lua` doesn't touch the game API directly, so it's
+  loadable — and now covered — by the offline test suite.
+- `release.yml` no longer passes `CF_API_KEY`, `WOWI_API_TOKEN` or
+  `WAGO_API_TOKEN`: this addon isn't published to CurseForge, WoWInterface
+  or Wago, and the unused env vars implied a distribution path that wasn't
+  actually configured.
+
 ## [1.4.0]
 
 ### Fixed

@@ -67,7 +67,11 @@ end
 -- Events
 --------------------------------------------------------------------------
 
-local eventFrame = CreateFrame("Frame")
+-- Parented explicitly: an anonymous frame with no parent and no other Lua
+-- reference (this one isn't captured by its own OnEvent closure) is eligible
+-- for garbage collection, which silently stops event delivery with no error.
+-- Parenting to UIParent keeps it alive for the life of the session.
+local eventFrame = CreateFrame("Frame", nil, UIParent)
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
 eventFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_HIDE")

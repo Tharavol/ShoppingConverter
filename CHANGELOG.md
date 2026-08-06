@@ -18,6 +18,14 @@ All notable changes to this addon are documented in this file.
   only a few pixels between them. The label is now anchored below the
   output box instead, so the two can't collide regardless of font size or
   UI scale.
+- The login message could silently never fire, along with (less visibly)
+  the Auction House open/close handling. The event frame backing both was
+  created with no parent and nothing else in the addon held a Lua
+  reference to it, which is safe on the client this addon was originally
+  written against - frames used to live forever regardless - but current
+  clients garbage collect exactly that shape of object with no error at
+  all. Both this frame and the Auction House query frame are now parented
+  explicitly so neither can be collected out from under the addon.
 
 ## [1.5.0]
 

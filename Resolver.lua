@@ -337,11 +337,14 @@ local function SendBrowseQuery(term, attempt, onFailure)
   end
 end
 
--- One frame for every query, not one per query: frames are never garbage
--- collected, and a cold conversion of a large list would otherwise leak one
--- per item. Safe to share because the lock guarantees a single query owns it
--- at a time, including while a timed-out query drains.
-local queryFrame = CreateFrame("Frame")
+-- One frame for every query, not one per query, so a cold conversion of a
+-- large list doesn't create one per item. Safe to share because the lock
+-- guarantees a single query owns it at a time, including while a timed-out
+-- query drains. Parented explicitly (rather than relying on staying
+-- reachable through ResolveLive's own closure) so it can't become eligible
+-- for garbage collection - an anonymous, parentless frame with no live Lua
+-- reference silently stops receiving events on current clients.
+local queryFrame = CreateFrame("Frame", nil, UIParent)
 
 -- Calls callback(itemID or nil) exactly once.
 local function ResolveLive(term, callback)

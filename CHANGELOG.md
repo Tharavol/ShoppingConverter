@@ -18,14 +18,26 @@ All notable changes to this addon are documented in this file.
   only a few pixels between them. The label is now anchored below the
   output box instead, so the two can't collide regardless of font size or
   UI scale.
-- The login message could silently never fire, along with (less visibly)
-  the Auction House open/close handling. The event frame backing both was
-  created with no parent and nothing else in the addon held a Lua
-  reference to it, which is safe on the client this addon was originally
-  written against - frames used to live forever regardless - but current
-  clients garbage collect exactly that shape of object with no error at
-  all. Both this frame and the Auction House query frame are now parented
-  explicitly so neither can be collected out from under the addon.
+- **None of the addon's settings, or the item ID cache, actually survived a
+  reload or relog.** `ShoppingConverterDB` was read and initialized at file
+  load time, but SavedVariables aren't injected into that global until
+  this addon's own files have finished loading, right before
+  `ADDON_LOADED` fires for it — reading it any earlier always finds `nil`,
+  so every session silently started from a fresh, disconnected table. Any
+  setting changed with `/shopconv` (or, as of this release, the Settings
+  panel) looked like it took effect, and did for the rest of that session,
+  but was never actually the table the client saves to disk. Initialization
+  now waits for `ADDON_LOADED` as it should have from the start.
+- The event frame handling the login message and Auction House open/close
+  was created with no parent and no other Lua reference to it, which was
+  safe on the client this addon was originally written against — frames
+  used to live forever regardless — but current clients garbage collect
+  exactly that shape of object, with no error at all. Both this frame and
+  the Auction House query frame are now parented explicitly so neither can
+  be collected out from under the addon. (This turned out not to be why
+  the login message wasn't showing — the SavedVariables timing bug above
+  was — but it's a real latent bug in its own right and worth having
+  either way.)
 
 ## [1.5.0]
 

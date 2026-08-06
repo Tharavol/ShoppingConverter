@@ -18,8 +18,10 @@ ns.DEFAULT_LIST_NAME = "CraftSim CraftQueue"
 -- Saved variables
 --------------------------------------------------------------------------
 
--- SavedVariables are populated before the addon's files run, so it's safe to
--- read and normalize the table here rather than waiting for ADDON_LOADED.
+-- SavedVariables are only populated once this addon's own files have all
+-- finished running, right before ADDON_LOADED fires for it - reading the
+-- global any earlier than that always finds nil, so this has to wait for
+-- that event rather than running at file load time.
 local DB_VERSION = 2
 
 local function InitializeDB()
@@ -50,8 +52,6 @@ local function InitializeDB()
   ns.db = db
 end
 
-InitializeDB()
-
 --------------------------------------------------------------------------
 -- Output helpers
 --------------------------------------------------------------------------
@@ -72,12 +72,21 @@ end
 -- for garbage collection, which silently stops event delivery with no error.
 -- Parenting to UIParent keeps it alive for the life of the session.
 local eventFrame = CreateFrame("Frame", nil, UIParent)
+eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_SHOW")
 eventFrame:RegisterEvent("PLAYER_INTERACTION_MANAGER_FRAME_HIDE")
 eventFrame:RegisterEvent("AUCTION_HOUSE_CLOSED")
 
 eventFrame:SetScript("OnEvent", function(_, event, arg1)
+  if event == "ADDON_LOADED" then
+    if arg1 == ADDON_NAME then
+      InitializeDB()
+      eventFrame:UnregisterEvent("ADDON_LOADED")
+    end
+    return
+  end
+
   if event == "PLAYER_LOGIN" then
     ns.Cache:Prepare()
     if ns.db.settings.printOnLogin then

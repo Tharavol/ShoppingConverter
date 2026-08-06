@@ -386,6 +386,13 @@ ns.UI = {
   end,
 }
 
+local optionsOpened
+ns.Options = {
+  Open = function(_self)
+    optionsOpened = true
+  end,
+}
+
 stubs.loadModule(here .. "/../Commands.lua", "ShoppingConverter", ns)
 
 local originalPrint = print
@@ -404,7 +411,7 @@ end
 
 do
   dispatch("bogus")
-  equals(#plainLines, 8, "an unknown command falls back to usage, one line per help entry")
+  equals(#plainLines, 9, "an unknown command falls back to usage, one line per help entry")
   equals(plainLines[1], "  |cffffff00/shopconv|r - open the Converter tab (Auction House must be open)",
     "usage is generated from the same table Dispatch matches against")
 end
@@ -414,6 +421,12 @@ do
   dispatch("")
   check(ahTabSelected, "an empty command opens the Converter tab")
   equals(#printedMessages, 0, "opening the tab prints nothing when it succeeds")
+end
+
+do
+  optionsOpened = false
+  dispatch("options")
+  check(optionsOpened, "the options command opens the settings panel")
 end
 
 do

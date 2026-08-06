@@ -90,9 +90,15 @@ end
 function Options:Register()
   local panel = CreatePanel()
   local category = Settings.RegisterCanvasLayoutCategory(panel, ADDON_NAME)
-  category.ID = ADDON_NAME
   Settings.RegisterAddOnCategory(category)
   self.category = category
+end
+
+-- Opens the Settings window straight to this panel, e.g. from /shopconv options.
+function Options:Open()
+  if self.category then
+    Settings.OpenToCategory(self.category:GetID())
+  end
 end
 
 Options:Register()

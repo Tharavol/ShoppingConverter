@@ -39,6 +39,13 @@ local COMMANDS = {
     end,
   },
   {
+    name = "options",
+    help = { "|cffffff00/shopconv options|r - open the settings panel" },
+    handler = function()
+      ns.Options:Open()
+    end,
+  },
+  {
     name = "lists",
     help = { "|cffffff00/shopconv lists|r - show the available Auctionator shopping lists" },
     handler = function()

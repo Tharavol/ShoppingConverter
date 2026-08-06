@@ -277,10 +277,12 @@ function UI:CreateTabContent()
   pane.partLabel:SetPoint("RIGHT", pane.prevButton, "LEFT", -6, 0)
 
   pane.scrollFrame:SetPoint("TOPLEFT", outputLabel, "BOTTOMLEFT", 8, -8)
-  pane.scrollFrame:SetPoint("BOTTOMRIGHT", -30, 16)
+  pane.scrollFrame:SetPoint("BOTTOMRIGHT", -30, 22)
 
   local versionText = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  versionText:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 4)
+  -- Anchored below the scroll frame rather than independently to the tab's
+  -- corner, so the two can't collide regardless of font size or UI scale.
+  versionText:SetPoint("TOPRIGHT", pane.scrollFrame, "BOTTOMRIGHT", 24, -6)
   versionText:SetText(ns.VERSION)
 
   frame:SetScript("OnShow", function()

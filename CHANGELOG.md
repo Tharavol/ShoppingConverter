@@ -2,6 +2,23 @@
 
 All notable changes to this addon are documented in this file.
 
+## [Unreleased]
+
+### Added
+- Settings panel (Blizzard Settings -> AddOns -> Shopping Converter) for
+  the toggles previously only reachable through `/shopconv`: the item ID
+  cache, CraftSim lookups, and the login message. Also adds a **Clear Item
+  Cache** button, which had no equivalent outside `/shopconv cache clear`.
+  The panel and the slash commands read and write the same settings, so
+  either one reflects whatever the other last set.
+
+### Fixed
+- The version label in the Converter tab could overlap the TSM search
+  string output box, since the two were positioned independently with
+  only a few pixels between them. The label is now anchored below the
+  output box instead, so the two can't collide regardless of font size or
+  UI scale.
+
 ## [1.5.0]
 
 Packaging and internals only — no player-visible change.

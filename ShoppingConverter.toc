@@ -22,3 +22,4 @@ Resolver.lua
 Converter.lua
 UI.lua
 AHTab.lua
+Options.lua

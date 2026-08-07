@@ -1,11 +1,15 @@
-name: Release
+name: Pre-release
 
 on:
   push:
     tags:
-      # Stable releases only -- v1.2.0-alpha.1 etc. go through prerelease.yml
-      # instead, so the two workflows never both fire on the same tag.
-      - "v[0-9]+.[0-9]+.[0-9]+"
+      # alpha/beta only: packager itself reads "alpha"/"beta" out of the tag
+      # name to decide the GitHub release's prerelease flag (and, later, the
+      # CurseForge release channel), so tags need one of those words in them
+      # to get that treatment. Anything else (e.g. -rc.1) would still build
+      # and publish here, just without that automatic classification.
+      - "v[0-9]+.[0-9]+.[0-9]+-alpha*"
+      - "v[0-9]+.[0-9]+.[0-9]+-beta*"
 
 permissions:
   contents: write
@@ -18,18 +22,16 @@ jobs:
         with:
           fetch-depth: 0
 
+      # No CF_API_KEY / WOWI_API_TOKEN / WAGO_API_TOKEN: matches release.yml
+      # -- this addon isn't published anywhere but GitHub. If that changes
+      # for stable releases later, this job still won't touch CurseForge,
+      # since packager only uploads to a destination when its token env var
+      # is present.
       - name: Package and release
         uses: BigWigsMods/packager@v2
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
-          # No CF_API_KEY / WOWI_API_TOKEN / WAGO_API_TOKEN: this addon isn't
-          # published to CurseForge, WoWInterface or Wago, so the packager
-          # just attaches the zip to the GitHub release.
 
-      # CI's dry-run build verifies layout too, but it skips itself on this
-      # exact commit (see ci.yml) since packager won't double-build a tagged
-      # commit. This is the only place the archive that actually ships gets
-      # checked.
       - name: Verify archive layout
         run: |
           zip=$(ls .release/*.zip)

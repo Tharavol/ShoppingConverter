@@ -11,6 +11,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          # Needed so "Check for pending tag" below can see tags, not just HEAD.
+          fetch-depth: 0
 
       - uses: leafo/gh-actions-lua@v13
         with:
@@ -28,10 +31,38 @@ jobs:
       - name: Tests
         run: lua Tests/run.lua
 
+      # If this push also carries a tag on HEAD (e.g. a release commit pushed
+      # together with its tag), BigWigsMods/packager intentionally no-ops on
+      # the branch push to avoid a duplicate build, leaving no zip behind.
+      # Detect that ourselves so the later steps skip deterministically
+      # instead of racing the tag ref and failing when they lose.
+      - name: Check for pending tag
+        id: check_tag
+        run: echo "tag=$(git tag --points-at HEAD)" >> "$GITHUB_OUTPUT"
+
       # Dry run only: validates .pkgmeta, TOC directives and keyword
       # substitution without uploading anything or needing credentials. Catches
       # packaging regressions (e.g. #3) on every PR instead of only at release.
       - name: Package (dry run)
+        if: steps.check_tag.outputs.tag == ''
         uses: BigWigsMods/packager@v2
         with:
           args: -d
+
+      - name: Verify package output
+        if: steps.check_tag.outputs.tag == ''
+        run: |
+          zip=$(ls .release/*.zip)
+          unzip -l "$zip"
+          unzip -l "$zip" | grep -q 'ShoppingConverter/ShoppingConverter.toc'
+          unzip -l "$zip" | grep -q 'ShoppingConverter/Core.lua'
+          unzip -l "$zip" | grep -q 'ShoppingConverter/Converter.lua'
+          unzip -l "$zip" | grep -q 'ShoppingConverter/Resolver.lua'
+          unzip -l "$zip" | grep -q 'ShoppingConverter/UI.lua'
+          unzip -l "$zip" | grep -q 'ShoppingConverter/Libs/LibStub'
+          unzip -l "$zip" | grep -q 'ShoppingConverter/CHANGELOG.md'
+
+          if unzip -l "$zip" | grep -q 'ShoppingConverter/Tests/'; then
+            echo "Tests/ should not ship in the release archive (see .pkgmeta)" >&2
+            exit 1
+          fi

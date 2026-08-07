@@ -31,6 +31,12 @@ local CHECKBOXES = {
     label = "Show a message at login",
     tooltip = "Print the addon name and version to chat when you log in.",
   },
+  {
+    key = "debug",
+    label = "Show diagnostic messages",
+    tooltip = "Print a chat message when the Auction House tab row or window "
+      .. "width can't be fixed up as expected. Only useful when troubleshooting a layout issue.",
+  },
 }
 
 local function CreatePanel()

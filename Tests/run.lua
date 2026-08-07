@@ -51,7 +51,7 @@ local ns = {
 }
 
 ns.db = {
-  settings = { useCache = true, useCraftSim = true, printOnLogin = false },
+  settings = { useCache = true, useCraftSim = true, printOnLogin = false, debug = false },
   itemCache = {},
 }
 
@@ -411,7 +411,7 @@ end
 
 do
   dispatch("bogus")
-  equals(#plainLines, 9, "an unknown command falls back to usage, one line per help entry")
+  equals(#plainLines, 10, "an unknown command falls back to usage, one line per help entry")
   equals(plainLines[1], "  |cffffff00/shopconv|r - open the Converter tab (Auction House must be open)",
     "usage is generated from the same table Dispatch matches against")
 end
@@ -477,6 +477,51 @@ do
   equals(ns.db.settings.printOnLogin, true, "login on enables the login message")
   dispatch("login off")
   equals(ns.db.settings.printOnLogin, false, "login off disables the login message")
+end
+
+do
+  dispatch("debug on")
+  equals(ns.db.settings.debug, true, "debug on enables diagnostic messages")
+  dispatch("debug off")
+  equals(ns.db.settings.debug, false, "debug off disables diagnostic messages")
+end
+
+--------------------------------------------------------------------------
+-- AH tab width math
+--
+-- Exercises AHTab.ComputeNewWidth directly rather than EnsureWidth: the
+-- latter needs a real AuctionHouseFrame, which wow_stubs deliberately
+-- leaves absent (see its header comment). Loading AHTab.lua itself is
+-- still safe without that stub - its top level only defines functions, it
+-- never touches WoW globals until one of those functions is called.
+--------------------------------------------------------------------------
+
+local ahTabNs = {}
+stubs.loadModule(here .. "/../AHTab.lua", "ShoppingConverter", ahTabNs)
+local AHTab = ahTabNs.AHTab
+
+do
+  local newWidth = AHTab.ComputeNewWidth(800, 800, 750, 2000)
+  equals(newWidth, 800, "no resize when the tab row already fits inside the frame")
+end
+
+do
+  local newWidth = AHTab.ComputeNewWidth(800, 800, 850, 2000)
+  equals(newWidth, 858, "widens by the overflow plus an 8px margin when the row runs past the edge")
+end
+
+do
+  -- Row wants to run 100px past the edge, but the screen-width ceiling
+  -- only leaves room for 30px of growth: the ceiling wins, and the row is
+  -- still left hanging off the edge (this is what EnsureWidth's
+  -- post-resize check is there to catch and report).
+  local newWidth = AHTab.ComputeNewWidth(800, 800, 900, 830)
+  equals(newWidth, 830, "never grows past the caller-supplied max width, even if the row still overflows")
+end
+
+do
+  local newWidth = AHTab.ComputeNewWidth(800, 800, 800, 2000)
+  equals(newWidth, 800, "a row landing exactly on the edge counts as fitting, not overflowing")
 end
 
 --------------------------------------------------------------------------

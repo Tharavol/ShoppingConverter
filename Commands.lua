@@ -109,6 +109,13 @@ local COMMANDS = {
       Toggle("printOnLogin", rest, "Login message")
     end,
   },
+  {
+    name = "debug",
+    help = { "|cffffff00/shopconv debug on / off|r - show AH tab layout diagnostic messages" },
+    handler = function(_, rest)
+      Toggle("debug", rest, "Debug messages")
+    end,
+  },
 }
 
 local function PrintUsage()

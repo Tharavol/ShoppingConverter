@@ -30,6 +30,7 @@ read_globals = {
     -- Frame / UI globals
     "CreateFrame", "UIParent", "UISpecialFrames", "AuctionHouseFrame",
     "ChatFontNormal", "GetScreenWidth", "PanelTemplates_TabResize", "Settings",
+    "hooksecurefunc",
 
     -- Lua extensions exposed by WoW
     "tContains", "wipe",

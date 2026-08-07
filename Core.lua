@@ -45,6 +45,12 @@ local function InitializeDB()
   if db.settings.useCache == nil then
     db.settings.useCache = true
   end
+  if db.settings.debug == nil then
+    -- Off by default: these are diagnostics for tracking down AH tab layout
+    -- issues (ordering, window-width fitting), not something most players
+    -- need to see.
+    db.settings.debug = false
+  end
 
   db.itemCache = db.itemCache or {}
 

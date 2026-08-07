@@ -2,6 +2,25 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.6.1]
+
+### Added
+- `/shopconv debug on/off`, and a matching "Show diagnostic messages"
+  checkbox in the Settings panel, print a chat message when the Auction
+  House tab row can't be positioned or the window can't be widened to fit
+  it. Off by default — these are for troubleshooting a layout issue, not
+  something most players need to see.
+
+### Fixed
+- The Auction House tab row — Buy/Sell/Auctions plus every tab TSM,
+  Auctionator, and this addon add alongside them — could run off the
+  right edge of the window with no Lua error anywhere to point at. The
+  auto-widening fix meant to prevent that measured the tab row before a
+  sibling addon that adds its tab asynchronously (e.g. Auctionator's
+  "Collecting(s)" tab) had actually added it, so the resize undershot with
+  nothing to reveal why. The addon now reacts to each tab as it's actually
+  added instead of guessing at a fixed delay after the Auction House opens.
+
 ## [1.6.0]
 
 ### Added

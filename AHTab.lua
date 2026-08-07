@@ -20,6 +20,13 @@ local TAB_OFFSET_X = 3
 
 local originalAHWidth
 
+-- Guards below silently skip the tab-ordering/width-fix workarounds rather
+-- than error, per the compatibility note above. That's correct behavior,
+-- but a silent skip is exactly how a tab row running off the window edge
+-- can happen with no Lua error to point at. Warn once per session instead
+-- so it shows up in chat.
+local warnedInternalStateUnavailable = false
+
 local function GetLib()
   return LibStub("LibAHTab-1-0", true)
 end
@@ -33,6 +40,15 @@ local function GetInternalState()
 
   local _, minor = LibStub:GetLibrary("LibAHTab-1-0", true)
   if minor and minor > SUPPORTED_LIB_MINOR then
+    if ns.db.settings.debug and not warnedInternalStateUnavailable then
+      warnedInternalStateUnavailable = true
+      ns.Print(
+        "LibAHTab is running a newer version (minor %d) than this addon supports (minor %d). "
+          .. "Tab ordering and auto-widening are disabled this session to avoid touching a "
+          .. "changed internal structure - the Converter tab still works, but may run past "
+          .. "the window edge. An update to Shopping Converter may be needed.",
+        minor, SUPPORTED_LIB_MINOR)
+    end
     return nil
   end
 
@@ -125,6 +141,25 @@ end
 -- resize.
 --------------------------------------------------------------------------
 
+-- Pure width math, pulled out of EnsureWidth so it can be unit tested
+-- without a real AuctionHouseFrame. Given the original (un-widened) frame
+-- width, that frame's current right edge, how far right the tab row
+-- reaches, and a hard ceiling, returns the width the frame should be set
+-- to. Exposed on AHTab so Tests/run.lua can exercise it directly.
+function AHTab.ComputeNewWidth(originalWidth, frameRight, rowRight, maxWidth)
+  local overflow = rowRight - frameRight
+  local newWidth = originalWidth
+  if overflow > 0 then
+    newWidth = originalWidth + overflow + 8
+  end
+  if newWidth > maxWidth then
+    newWidth = maxWidth
+  end
+  return newWidth
+end
+
+local warnedOverflow = false
+
 local function EnsureWidth()
   local lib = GetLib()
   local internalState = GetInternalState()
@@ -152,20 +187,33 @@ local function EnsureWidth()
   originalAHWidth = originalAHWidth or AuctionHouseFrame:GetWidth()
   AuctionHouseFrame:SetWidth(originalAHWidth)
 
-  local overflow = rowRight - AuctionHouseFrame:GetRight()
-  local newWidth = originalAHWidth
-  if overflow > 0 then
-    newWidth = originalAHWidth + overflow + 8
-  end
-
-  -- Safety net: never let the window grow past the screen, no matter
-  -- what the above math produces.
+  -- Safety net: never let the window grow past the screen, no matter what
+  -- the width math below produces.
   local maxWidth = GetScreenWidth() - 40
-  if newWidth > maxWidth then
-    newWidth = maxWidth
-  end
+  local newWidth = AHTab.ComputeNewWidth(
+    originalAHWidth, AuctionHouseFrame:GetRight(), rowRight, maxWidth)
 
   AuctionHouseFrame:SetWidth(newWidth)
+
+  -- Confirm the resize actually closed the gap. It should always, since
+  -- newWidth is derived from rowRight - but the screen-width ceiling above
+  -- can still leave the row hanging off the edge on a very cluttered tab
+  -- bar, and a stale rowRight (measured before a sibling addon finished
+  -- adding its tab) could too. Either way, that's the exact "tabs run past
+  -- the window edge, no error" symptom, so surface it instead of letting
+  -- it pass quietly.
+  if rowRight > AuctionHouseFrame:GetRight() + 1 then
+    if ns.db.settings.debug and not warnedOverflow then
+      warnedOverflow = true
+      ns.Print(
+        "The Auction House tab row still runs past the window edge after widening "
+          .. "(row extends to %.0f, window edge at %.0f). This may self-correct as other "
+          .. "addons finish adding their tabs.",
+        rowRight, AuctionHouseFrame:GetRight())
+    end
+  else
+    warnedOverflow = false
+  end
 end
 
 -- Leaving the window wide after the player closes the Auction House affects
@@ -180,12 +228,45 @@ end
 -- Entry points
 --------------------------------------------------------------------------
 
+local hookedCreateTab = false
+
+-- Fires every time ANY addon adds a tab to the shared AH tab row, including
+-- ones that show up well after the AH first opens (e.g. an addon that waits
+-- on its own async data before adding its tab). A fixed-delay retry can only
+-- guess how long to wait and guesses wrong some of the time, silently and
+-- without a scale to warn against - reacting to the actual event that
+-- changes the row's width is exact regardless of timing.
+local function OnLibTabCreated(_, tabID)
+  if tabID == TAB_ID then
+    -- Our own creation is handled by the deferred pass below, which runs
+    -- after CreateTab()'s own re-clamp of this button's width - reacting to
+    -- it here would measure the row before that clamp has applied.
+    return
+  end
+
+  -- Deferred a frame, same as the initial pass below: PositionTab()'s
+  -- SetPoint calls don't take effect for GetRight() purposes until the next
+  -- layout pass, so measuring in the same tick that just repositioned
+  -- everything reads stale (too-narrow) anchors and undershoots the resize.
+  C_Timer.After(0, function()
+    PositionTab()
+    EnsureWidth()
+  end)
+end
+
 function AHTab:OnAuctionHouseShow()
   CreateTab()
 
+  local lib = GetLib()
+  if lib and not hookedCreateTab then
+    hookedCreateTab = true
+    hooksecurefunc(lib, "CreateTab", OnLibTabCreated)
+  end
+
   -- Deferred a frame: other addons that also add AH tabs off this same
   -- event may not have added theirs yet, and positioning or measuring the
-  -- tab row before they do would miss them.
+  -- tab row before they do would miss them. Tabs added later than this are
+  -- now caught by the CreateTab hook above instead of a second guess here.
   C_Timer.After(0, function()
     PositionTab()
     EnsureWidth()

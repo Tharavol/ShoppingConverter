@@ -2,6 +2,28 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.6.2]
+
+### Fixed
+- The Auction House tab row could still occasionally run off the right
+  edge of the window even after 1.6.1's fix for it. `PositionTab()`
+  repositioning the row and `EnsureWidth()` measuring it ran back to back
+  in the same tick, and reading a tab's position in the same tick it was
+  just re-anchored occasionally read a stale, pre-reposition value and
+  undershot the resize - rare, since the engine usually keeps up, but not
+  reliably. The two are now deferred a frame apart so the measurement
+  always sees where the row actually ended up.
+- Widening the window to fit the tab row left every Auction House results
+  list - Browse, each of Auctions' sub-tabs, Sell, the per-item Buy view -
+  with dead space to the right of its columns, and a visible seam in its
+  background past the point where the window used to end. Both are
+  computed once, the first time each panel is shown, and Blizzard never
+  revisits them on a later resize - this addon is the only thing that
+  ever resizes that window after the fact. Both are now re-arranged once
+  the window's width actually settles, debounced against the burst of
+  near-simultaneous tab additions (TSM, Auctionator, this addon, and
+  others) that can each trigger their own resize in quick succession.
+
 ## [1.6.1]
 
 ### Added

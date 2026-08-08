@@ -141,6 +141,89 @@ end
 -- resize.
 --------------------------------------------------------------------------
 
+--------------------------------------------------------------------------
+-- Auction House list columns
+--
+-- Every Auction House results list - Browse, each of Auctions' sub-tabs,
+-- Sell, the per-item Buy view - computes its column widths exactly once,
+-- the first time that panel is shown, then never revisits them: there's no
+-- OnSizeChanged handler anywhere in Blizzard's Auction House code for it.
+-- Widening the frame above leaves those columns exactly where they were,
+-- short of the new right edge. Re-running a list's own layout function -
+-- the same call Blizzard makes when a column's sort order or shape
+-- changes - re-measures it against the current width and closes the gap.
+--------------------------------------------------------------------------
+
+local function RearrangeItemList(itemList)
+  local ok, err = pcall(itemList.SetTableBuilderLayout, itemList, itemList.tableBuilderLayoutFunction)
+  if not ok and ns.db.settings.debug then
+    ns.Print("Couldn't re-arrange an Auction House list's columns after widening the window: %s", tostring(err))
+  end
+
+  -- AuctionHouseItemListMixin:OnLoad() calls AuctionHouseBackgroundMixin.OnLoad()
+  -- on this same frame, which sizes .Background to its atlas's native pixel
+  -- size (SetAtlas(atlas, true) - true means "use the atlas's own size") and
+  -- anchors it at a single TOPLEFT point: fixed at whatever the frame's width
+  -- was at load time, the same "never designed to be resized" problem as the
+  -- columns above, just for the fill art instead of the layout. The NineSlice
+  -- border, right next to it in that same OnLoad, is anchored TOPLEFT and
+  -- BOTTOMRIGHT and so already stretches correctly on its own - which is why
+  -- the outer edge lines up with the widened window but the fill doesn't.
+  -- Re-anchored the same way the NineSlice already is, with useAtlasSize
+  -- turned off so the anchors (not the atlas's native size) govern it.
+  if itemList.Background and itemList.backgroundAtlas then
+    local xOffset = itemList.backgroundXOffset or 0
+    local yOffset = itemList.backgroundYOffset or 0
+    local bgOk, bgErr = pcall(function()
+      itemList.Background:SetAtlas(itemList.backgroundAtlas, false)
+      itemList.Background:ClearAllPoints()
+      itemList.Background:SetPoint("TOPLEFT", xOffset + 3, yOffset - 3)
+      itemList.Background:SetPoint("BOTTOMRIGHT")
+    end)
+    if not bgOk and ns.db.settings.debug then
+      ns.Print("Couldn't re-stretch an Auction House list's background after widening the window: %s", tostring(bgErr))
+    end
+  end
+end
+
+-- Recurses the Auction House frame tree looking for anything shaped like a
+-- Blizzard item list - has a stored layout function and the method that
+-- (re)applies it - rather than hard-coding each tab's frame path. Browse,
+-- every Auctions sub-tab, Sell, and the per-item Buy view all share that
+-- shape, and a generic scan keeps working if Blizzard adds or renames a
+-- tab, rather than silently missing a newly added one.
+local function RearrangeItemLists(frame)
+  for _, child in ipairs({ frame:GetChildren() }) do
+    if type(child.SetTableBuilderLayout) == "function" and child.tableBuilderLayoutFunction then
+      RearrangeItemList(child)
+    end
+    RearrangeItemLists(child)
+  end
+end
+
+-- Tab additions arrive as a burst - TSM, Auctionator's Shopping tab, and its
+-- async "Collecting(s)" tab can each trigger their own EnsureWidth() call
+-- within a frame or two of each other, and every one of those calls resets
+-- AuctionHouseFrame to originalAHWidth before recomputing. A single call's
+-- deferred rearrange can land in that same window and read a transiently
+-- narrow ScrollBox instead of the eventual final one - a fixed one-frame
+-- defer confirmed this in testing (fixed on demand well after the AH
+-- settled, but not from the automatic hook alone). Debounced instead: each
+-- width change bumps a generation counter and schedules a check against it,
+-- so only the last call in a burst - the one still current once things go
+-- quiet - actually rearranges anything.
+local rearrangeGeneration = 0
+
+local function ScheduleRearrange()
+  rearrangeGeneration = rearrangeGeneration + 1
+  local thisGeneration = rearrangeGeneration
+  C_Timer.After(0.2, function()
+    if thisGeneration == rearrangeGeneration then
+      RearrangeItemLists(AuctionHouseFrame)
+    end
+  end)
+end
+
 -- Pure width math, pulled out of EnsureWidth so it can be unit tested
 -- without a real AuctionHouseFrame. Given the original (un-widened) frame
 -- width, that frame's current right edge, how far right the tab row
@@ -185,6 +268,7 @@ local function EnsureWidth()
   end
 
   originalAHWidth = originalAHWidth or AuctionHouseFrame:GetWidth()
+  local previousWidth = AuctionHouseFrame:GetWidth()
   AuctionHouseFrame:SetWidth(originalAHWidth)
 
   -- Safety net: never let the window grow past the screen, no matter what
@@ -194,6 +278,16 @@ local function EnsureWidth()
     originalAHWidth, AuctionHouseFrame:GetRight(), rowRight, maxWidth)
 
   AuctionHouseFrame:SetWidth(newWidth)
+
+  -- Blizzard's Browse/Auctions/Sell/Buy list columns are stretched to this
+  -- frame but only ever measure their own width once, the first time each
+  -- is shown - resizing the frame alone leaves their columns exactly where
+  -- they were, short of the new edge. Only worth redoing when the width
+  -- actually moved; see ScheduleRearrange for why this is debounced rather
+  -- than just deferred a frame.
+  if newWidth ~= previousWidth then
+    ScheduleRearrange()
+  end
 
   -- Confirm the resize actually closed the gap. It should always, since
   -- newWidth is derived from rowRight - but the screen-width ceiling above
@@ -230,6 +324,22 @@ end
 
 local hookedCreateTab = false
 
+-- PositionTab()'s SetPoint calls don't take effect for GetRight() purposes
+-- until the next layout pass, so measuring in the same tick that just
+-- repositioned everything reads stale (too-narrow) anchors and undershoots
+-- the resize. That was already true of PositionTab() relative to whatever
+-- event triggers it below (handled by deferring a frame before calling
+-- this), but it's just as true of EnsureWidth() relative to PositionTab()
+-- itself - calling them back to back in the same tick, as before, left
+-- exactly this race in place one level deeper: usually fine, occasionally
+-- not, which is why the tab row could still run off the edge every so
+-- often even after that first fix. Deferring EnsureWidth() its own frame
+-- closes it for good.
+local function PositionAndEnsureWidth()
+  PositionTab()
+  C_Timer.After(0, EnsureWidth)
+end
+
 -- Fires every time ANY addon adds a tab to the shared AH tab row, including
 -- ones that show up well after the AH first opens (e.g. an addon that waits
 -- on its own async data before adding its tab). A fixed-delay retry can only
@@ -244,14 +354,7 @@ local function OnLibTabCreated(_, tabID)
     return
   end
 
-  -- Deferred a frame, same as the initial pass below: PositionTab()'s
-  -- SetPoint calls don't take effect for GetRight() purposes until the next
-  -- layout pass, so measuring in the same tick that just repositioned
-  -- everything reads stale (too-narrow) anchors and undershoots the resize.
-  C_Timer.After(0, function()
-    PositionTab()
-    EnsureWidth()
-  end)
+  C_Timer.After(0, PositionAndEnsureWidth)
 end
 
 function AHTab:OnAuctionHouseShow()
@@ -267,10 +370,7 @@ function AHTab:OnAuctionHouseShow()
   -- event may not have added theirs yet, and positioning or measuring the
   -- tab row before they do would miss them. Tabs added later than this are
   -- now caught by the CreateTab hook above instead of a second guess here.
-  C_Timer.After(0, function()
-    PositionTab()
-    EnsureWidth()
-  end)
+  C_Timer.After(0, PositionAndEnsureWidth)
 end
 
 function AHTab:IsAvailable()

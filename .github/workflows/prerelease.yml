@@ -42,9 +42,12 @@ jobs:
           unzip -l "$zip" | grep -q 'ShoppingConverter/Resolver.lua'
           unzip -l "$zip" | grep -q 'ShoppingConverter/UI.lua'
           unzip -l "$zip" | grep -q 'ShoppingConverter/Libs/LibStub'
-          unzip -l "$zip" | grep -q 'ShoppingConverter/CHANGELOG.md'
 
           if unzip -l "$zip" | grep -q 'ShoppingConverter/Tests/'; then
             echo "Tests/ should not ship in the release archive (see .pkgmeta)" >&2
+            exit 1
+          fi
+          if unzip -l "$zip" | grep -q 'ShoppingConverter/CHANGELOG.md'; then
+            echo "CHANGELOG.md should not ship in the release archive (see .pkgmeta)" >&2
             exit 1
           fi

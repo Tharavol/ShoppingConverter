@@ -1,4 +1,4 @@
-## Interface: 120007
+## Interface: 120100
 ## Title: Shopping Converter
 ## Notes: Adds an Auction House tab that converts an Auctionator shopping list into a TradeSkillMaster-compatible search string.
 ## Author: Tharavol, Claude
@@ -9,7 +9,7 @@
 ## Dependencies: Auctionator
 ## OptionalDeps: CraftSim
 
-# Release notes live in CHANGELOG.md.
+## X-ReleaseNotes: Adds a Converter tab to the Blizzard Auction House frame that turns an Auctionator shopping list into a TradeSkillMaster-compatible search string, ready to paste into TSM. Pick a list from the dropdown and the string is generated and selected automatically; each entry becomes TSM's i:<itemID>/x<qty> syntax, joined with semicolons, and crafting-reagent quality is preserved so a rank 1 reagent does not silently become rank 3. Output too long for TSM's search box is split into parts you can page through and paste one at a time. When CraftSim is installed, item IDs are read straight out of its craft queue, which makes the common case instant; every resolved item ID is also cached across sessions, so repeat conversions of an evolving queue do not re-query the Auction House. The tab is added through the embedded LibAHTab library rather than a manual AH tab hack, avoiding taint. Auctionator is required - the addon reads shopping lists through its public API and will not load without it. CraftSim and TradeSkillMaster are both optional; Shopping Converter never calls into TSM, it only produces the text. /shopconv (alias /shoppingconverter) converts a list from anywhere, away from the Auction House. Source, issues and release notes: https://github.com/Tharavol/ShoppingConverter
 
 Libs\LibStub\LibStub.lua
 Libs\LibAHTab\LibAHTab.xml

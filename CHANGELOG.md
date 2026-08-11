@@ -2,6 +2,21 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.7.0]
+
+### Changed
+- Adopt the cross-addon slash command standard (#36): bare `/shopconv` now opens the settings panel instead of jumping to the Converter tab; the old jump moves to `/shopconv tab`. Added `config`/`gui` aliases for `options`, plus `help`, `status`, `version` and `reset` commands
+- `craftsim`, `login` and `debug` now toggle and report their state when given no argument, matching `debug`'s existing on/off form
+- An unrecognised command now says which word wasn't understood instead of silently falling back to the usage text
+- `debug`, `craftsim`, `login` and `cache`'s on/off argument now reject an unrecognised value with an error instead of silently leaving the setting unchanged and reporting it as though the value had applied
+
+## [1.6.3]
+
+### Changed
+- Bump TOC Interface to 120100 for WoW 12.1.0
+- Exclude CHANGELOG.md from the packaged zip
+- Add X-ReleaseNotes with the addon summary and repository link
+
 ## [1.6.2]
 
 ### Fixed

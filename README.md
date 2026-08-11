@@ -57,14 +57,20 @@ buttons to page through them and paste each one separately.
 
 | Command | Effect |
 | --- | --- |
-| `/shopconv` | Jump to the Converter tab (Auction House must be open) |
+| `/shopconv` | Open the settings panel (also: `options`, `config`, `gui`) |
+| `/shopconv tab` | Jump to the Converter tab (Auction House must be open) |
 | `/shopconv lists` | List the available Auctionator shopping lists |
 | `/shopconv convert <name>` | Convert a list into a copyable window, no AH needed |
 | `/shopconv cache` | Show item cache statistics |
 | `/shopconv cache clear` | Empty the item cache |
 | `/shopconv cache on\|off` | Reuse resolved item IDs between sessions |
-| `/shopconv craftsim on\|off` | Read item IDs from CraftSim's craft queue |
-| `/shopconv login on\|off` | Print a version message at login |
+| `/shopconv craftsim [on\|off]` | Toggle or set reading item IDs from CraftSim's craft queue |
+| `/shopconv login [on\|off]` | Toggle or set a version message at login |
+| `/shopconv debug [on\|off]` | Toggle or set AH tab layout diagnostic messages |
+| `/shopconv status` | Show current settings |
+| `/shopconv version` | Show the addon version |
+| `/shopconv reset` | Restore settings to defaults |
+| `/shopconv help` | List all commands |
 
 ## How it works
 

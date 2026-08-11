@@ -55,6 +55,10 @@ ns.db = {
   itemCache = {},
 }
 
+ns.DEFAULT_SETTINGS = {
+  useCache = true, useCraftSim = true, printOnLogin = false, debug = false,
+}
+
 stubs.loadModule(here .. "/../Version.lua", "ShoppingConverter", ns)
 stubs.loadModule(here .. "/../Cache.lua", "ShoppingConverter", ns)
 stubs.loadModule(here .. "/../Converter.lua", "ShoppingConverter", ns)
@@ -391,6 +395,14 @@ ns.Options = {
   Open = function(_self)
     optionsOpened = true
   end,
+  -- Mirrors the real Options.lua CHECKBOXES list/order, so "status" tests
+  -- exercise the same shape Commands.lua reads in-game.
+  CHECKBOXES = {
+    {key = "useCache", label = "Reuse item ID cache between sessions"},
+    {key = "useCraftSim", label = "Use CraftSim's craft queue for item IDs"},
+    {key = "printOnLogin", label = "Show a message at login"},
+    {key = "debug", label = "Show diagnostic messages"},
+  },
 }
 
 stubs.loadModule(here .. "/../Commands.lua", "ShoppingConverter", ns)
@@ -411,22 +423,51 @@ end
 
 do
   dispatch("bogus")
-  equals(#plainLines, 10, "an unknown command falls back to usage, one line per help entry")
-  equals(plainLines[1], "  |cffffff00/shopconv|r - open the Converter tab (Auction House must be open)",
+  equals(printedMessages[1], "Unknown command: bogus",
+    "an unknown command says what was unrecognised (S4)")
+  equals(#plainLines, 14, "falls back to usage, one line per help entry")
+  equals(plainLines[1],
+    "  |cffffff00/shopconv|r, |cffffff00/shopconv options|r, |cffffff00/shopconv config|r, "
+      .. "|cffffff00/shopconv gui|r - open the settings panel",
     "usage is generated from the same table Dispatch matches against")
 end
 
 do
-  ahTabSelected = false
+  dispatch("help")
+  equals(printedMessages[1], "test commands:", "help prints only the usage header, no error")
+  equals(#plainLines, 14, "help prints the same usage bogus falls back to")
+end
+
+do
+  optionsOpened = false
   dispatch("")
-  check(ahTabSelected, "an empty command opens the Converter tab")
-  equals(#printedMessages, 0, "opening the tab prints nothing when it succeeds")
+  check(optionsOpened, "an empty command opens the settings panel (S2)")
+  equals(#printedMessages, 0, "opening the panel prints nothing")
 end
 
 do
   optionsOpened = false
   dispatch("options")
   check(optionsOpened, "the options command opens the settings panel")
+end
+
+do
+  optionsOpened = false
+  dispatch("config")
+  check(optionsOpened, "the config alias opens the settings panel")
+end
+
+do
+  optionsOpened = false
+  dispatch("gui")
+  check(optionsOpened, "the gui alias opens the settings panel")
+end
+
+do
+  ahTabSelected = false
+  dispatch("tab")
+  check(ahTabSelected, "tab opens the Converter tab, the bare command's old behaviour")
+  equals(#printedMessages, 0, "opening the tab prints nothing when it succeeds")
 end
 
 do
@@ -484,6 +525,79 @@ do
   equals(ns.db.settings.debug, true, "debug on enables diagnostic messages")
   dispatch("debug off")
   equals(ns.db.settings.debug, false, "debug off disables diagnostic messages")
+end
+
+do
+  -- S8: bare toggles and reports the new state, for the three plain on/off
+  -- toggles. cache is deliberately excluded -- its bare form is a stats
+  -- query (see the "cache" tests above).
+  ns.db.settings.debug = false
+  dispatch("debug")
+  equals(ns.db.settings.debug, true, "bare debug toggles the current state")
+  dispatch("debug")
+  equals(ns.db.settings.debug, false, "bare debug toggles back")
+
+  ns.db.settings.useCraftSim = true
+  dispatch("craftsim")
+  equals(ns.db.settings.useCraftSim, false, "bare craftsim toggles the current state")
+
+  ns.db.settings.printOnLogin = false
+  dispatch("login")
+  equals(ns.db.settings.printOnLogin, true, "bare login toggles the current state")
+  ns.db.settings.printOnLogin = false
+end
+
+do
+  -- S12: an invalid value is rejected, not silently coerced to false and
+  -- reported as though it had applied.
+  ns.db.settings.debug = true
+  dispatch("debug yes")
+  equals(ns.db.settings.debug, true, "an invalid value leaves the setting unchanged")
+  equals(printedMessages[1], "'yes' - expected 'on' or 'off'.",
+    "an invalid value is rejected with a specific error")
+  ns.db.settings.debug = false
+end
+
+do
+  dispatch("cache bogus")
+  equals(printedMessages[1], "'bogus' - expected 'on' or 'off'.",
+    "cache's on/off form rejects invalid values the same way")
+end
+
+do
+  ns.db.settings.useCache = true
+  ns.db.settings.useCraftSim = false
+  ns.db.settings.printOnLogin = true
+  ns.db.settings.debug = false
+
+  dispatch("status")
+
+  equals(printedMessages[1], "test settings:", "status prints a header via ns.Print")
+  equals(#plainLines, 5, "one line per checkbox plus the cache summary")
+  equals(plainLines[1], "  Reuse item ID cache between sessions: |cff00ff00on|r",
+    "status lists each checkbox's label and current state")
+  equals(plainLines[3], "  Show a message at login: |cff00ff00on|r",
+    "status reflects the current value of each setting")
+end
+
+do
+  dispatch("version")
+  equals(printedMessages[1], "test", "version prints the addon version")
+end
+
+do
+  ns.db.settings.useCache = false
+  ns.db.settings.useCraftSim = false
+  ns.db.settings.printOnLogin = true
+  ns.db.settings.debug = true
+
+  dispatch("reset")
+
+  equals(ns.db.settings.useCache, true, "reset restores useCache to its default")
+  equals(ns.db.settings.useCraftSim, true, "reset restores useCraftSim to its default")
+  equals(ns.db.settings.printOnLogin, false, "reset restores printOnLogin to its default")
+  equals(ns.db.settings.debug, false, "reset restores debug to its default")
+  equals(printedMessages[1], "Settings restored to defaults.", "reset confirms what it did")
 end
 
 --------------------------------------------------------------------------

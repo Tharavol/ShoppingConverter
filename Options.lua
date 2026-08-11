@@ -13,6 +13,8 @@ local ADDON_NAME, ns = ...
 local Options = {}
 ns.Options = Options
 
+-- Exposed as Options.CHECKBOXES so Commands.lua's `status` can list the same
+-- toggles under the same labels without a second hand-maintained copy.
 local CHECKBOXES = {
   {
     key = "useCache",
@@ -38,6 +40,7 @@ local CHECKBOXES = {
       .. "width can't be fixed up as expected. Only useful when troubleshooting a layout issue.",
   },
 }
+Options.CHECKBOXES = CHECKBOXES
 
 local function CreatePanel()
   local panel = CreateFrame("Frame")

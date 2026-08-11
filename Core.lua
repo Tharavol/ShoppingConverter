@@ -24,6 +24,19 @@ ns.DEFAULT_LIST_NAME = "CraftSim CraftQueue"
 -- that event rather than running at file load time.
 local DB_VERSION = 2
 
+-- Shared with Commands.lua's `reset`, so the two can't drift apart.
+ns.DEFAULT_SETTINGS = {
+  -- Off by default: the version is already shown on the tab itself, and
+  -- unsolicited login spam is the most common complaint about small addons.
+  printOnLogin = false,
+  useCraftSim = true,
+  useCache = true,
+  -- Off by default: these are diagnostics for tracking down AH tab layout
+  -- issues (ordering, window-width fitting), not something most players
+  -- need to see.
+  debug = false
+}
+
 local function InitializeDB()
   ShoppingConverterDB = ShoppingConverterDB or {}
   local db = ShoppingConverterDB
@@ -34,22 +47,10 @@ local function InitializeDB()
   db.version = db.version or DB_VERSION
 
   db.settings = db.settings or {}
-  if db.settings.printOnLogin == nil then
-    -- Off by default: the version is already shown on the tab itself, and
-    -- unsolicited login spam is the most common complaint about small addons.
-    db.settings.printOnLogin = false
-  end
-  if db.settings.useCraftSim == nil then
-    db.settings.useCraftSim = true
-  end
-  if db.settings.useCache == nil then
-    db.settings.useCache = true
-  end
-  if db.settings.debug == nil then
-    -- Off by default: these are diagnostics for tracking down AH tab layout
-    -- issues (ordering, window-width fitting), not something most players
-    -- need to see.
-    db.settings.debug = false
+  for key, value in pairs(ns.DEFAULT_SETTINGS) do
+    if db.settings[key] == nil then
+      db.settings[key] = value
+    end
   end
 
   db.itemCache = db.itemCache or {}

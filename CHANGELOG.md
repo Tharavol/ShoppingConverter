@@ -2,6 +2,11 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.7.1]
+
+### Added
+- Icon (`INV_Inscription_ParchmentVar06`) for the AddOns list and AddonCompartment button
+
 ## [1.7.0]
 
 ### Changed

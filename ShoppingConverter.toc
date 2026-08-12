@@ -3,6 +3,7 @@
 ## Notes: Adds an Auction House tab that converts an Auctionator shopping list into a TradeSkillMaster-compatible search string.
 ## Author: Tharavol, Claude
 ## Version: @project-version@
+## IconTexture: Interface\Icons\INV_Inscription_ParchmentVar06
 ## Category-enUS: Auction House
 ## X-License: MIT
 ## SavedVariables: ShoppingConverterDB

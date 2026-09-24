@@ -21,6 +21,10 @@ globals = {
     "SLASH_SHOPPINGCONVERTER1",
     "SLASH_SHOPPINGCONVERTER2",
     "SlashCmdList",
+
+    -- Blizzard's own table; addons are expected to add entries to it directly
+    -- (StaticPopupDialogs["MY_KEY"] = {...}), not go through a setter.
+    "StaticPopupDialogs",
 }
 
 read_globals = {
@@ -30,7 +34,7 @@ read_globals = {
     -- Frame / UI globals
     "CreateFrame", "UIParent", "UISpecialFrames", "AuctionHouseFrame",
     "ChatFontNormal", "GetScreenWidth", "PanelTemplates_TabResize", "Settings",
-    "hooksecurefunc",
+    "hooksecurefunc", "StaticPopup_Show", "CANCEL",
 
     -- Lua extensions exposed by WoW
     "tContains", "wipe",

@@ -2,6 +2,24 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.8.0]
+
+### Added
+- **Clear List** button next to Refresh on the Converter tab, and a matching
+  `/shopconv clear <list name>` command, to empty an Auctionator shopping
+  list without leaving the Auction House to do it. Auctionator's public
+  `Auctionator.API.v1` has no call for this - the closest options were
+  reading a list's items and converting a search string - so this reaches
+  into the same internal `Auctionator.Shopping.ListManager` object
+  `GetShoppingListNames` already relies on, and removes every item with
+  `list:DeleteItem(index)`, walked from the end of the list backwards.
+  That's the same call Auctionator's own shopping tab uses to remove a
+  single item; there's no bulk-clear equivalent, only that one repeated.
+  Clearing empties the list rather than deleting it outright, so it's still
+  there, just empty, afterward. Since this can't be undone in-game, both
+  the button and the slash command always ask for confirmation first,
+  naming the specific list, before anything is removed.
+
 ## [1.7.1]
 
 ### Added

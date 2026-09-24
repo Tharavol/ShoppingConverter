@@ -20,8 +20,10 @@ search string, ready to paste into TSM.
   an evolving craft queue don't re-query the Auction House.
 - Splits output too long for TSM's search box into parts you can page
   through and paste one at a time.
-- Dropdown to pick which shopping list to convert, a Refresh button, and a
-  `/shopconv` command for use away from the Auction House.
+- Dropdown to pick which shopping list to convert, a Refresh button, a
+  Clear List button to empty the selected list in Auctionator (with a
+  confirmation prompt first - it can't be undone), and a `/shopconv`
+  command for use away from the Auction House.
 
 ## Requirements
 
@@ -49,6 +51,9 @@ search string, ready to paste into TSM.
    it's ready - copy it and paste it into TSM's search field. Click
    **Select All** to reselect it later.
 5. Click **Refresh** to re-run the conversion at any time.
+6. Click **Clear List** to empty the selected list in Auctionator itself -
+   a confirmation prompt names the list and asks first, since this cannot
+   be undone. The list stays, just empty; it isn't deleted.
 
 If the string was split into several parts, use the **`<`** and **`>`**
 buttons to page through them and paste each one separately.
@@ -61,6 +66,7 @@ buttons to page through them and paste each one separately.
 | `/shopconv tab` | Jump to the Converter tab (Auction House must be open) |
 | `/shopconv lists` | List the available Auctionator shopping lists |
 | `/shopconv convert <name>` | Convert a list into a copyable window, no AH needed |
+| `/shopconv clear <name>` | Empty an Auctionator shopping list (asks for confirmation) |
 | `/shopconv cache` | Show item cache statistics |
 | `/shopconv cache clear` | Empty the item cache |
 | `/shopconv cache on\|off` | Reuse resolved item IDs between sessions |

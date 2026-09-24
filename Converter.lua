@@ -76,6 +76,65 @@ function Converter:GetShoppingListNames()
   return names
 end
 
+-- Shared by GetShoppingListItemCount and ClearList - both need the same
+-- internal list object ListManager hands back, guarded the same way
+-- GetShoppingListNames guards its own reach into ListManager.
+local function GetShoppingList(listName)
+  if not listName or not (Auctionator and Auctionator.Shopping and Auctionator.Shopping.ListManager) then
+    return nil
+  end
+
+  local ok, list = pcall(function()
+    return Auctionator.Shopping.ListManager:GetByName(listName)
+  end)
+  if not ok or not list then
+    return nil
+  end
+
+  return list
+end
+
+-- Returns how many items `listName` currently holds, or 0 if it doesn't
+-- exist or Auctionator isn't in a usable state. Used to decide whether
+-- clearing a list is even worth confirming.
+function Converter:GetShoppingListItemCount(listName)
+  local list = GetShoppingList(listName)
+  if not list then
+    return 0
+  end
+
+  local ok, count = pcall(function() return list:GetItemCount() end)
+  return (ok and count) or 0
+end
+
+-- Empties `listName` of every item, leaving the (now-empty) list itself in
+-- place. Auctionator's v1 API has no bulk-clear call, and neither does the
+-- internal list object - only DeleteItem(index), removing one item at a
+-- time, which is the same call Auctionator's own shopping tab uses to
+-- remove a single item. Walked from the end of the list backwards so
+-- removing an item never shifts the index of one still waiting to be
+-- removed.
+--
+-- Returns true if anything was actually removed, false if the list is
+-- missing, already empty, or Auctionator isn't in a usable state.
+function Converter:ClearList(listName)
+  local list = GetShoppingList(listName)
+  if not list then
+    return false
+  end
+
+  local ok, count = pcall(function() return list:GetItemCount() end)
+  if not ok or not count or count == 0 then
+    return false
+  end
+
+  for index = count, 1, -1 do
+    pcall(function() list:DeleteItem(index) end)
+  end
+
+  return true
+end
+
 local function GetTerms(listName)
   if not listName or not (Auctionator and Auctionator.API and Auctionator.API.v1) then
     return nil

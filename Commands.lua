@@ -111,6 +111,19 @@ local COMMANDS = {
     end,
   },
   {
+    name = "clear",
+    help = {
+      "|cffffff00/shopconv clear <list name>|r - empty an Auctionator shopping list (asks for confirmation)",
+    },
+    handler = function(argument)
+      if argument == "" then
+        ns.Print("Usage: |cffffff00/shopconv clear <list name>|r")
+        return
+      end
+      ns.UI:ConfirmClearList(argument)
+    end,
+  },
+  {
     name = "cache",
     help = {
       "|cffffff00/shopconv cache|r - show item cache statistics",

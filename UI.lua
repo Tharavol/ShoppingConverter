@@ -91,6 +91,51 @@ local function CreateOutputPane(parent)
 end
 
 --------------------------------------------------------------------------
+-- Clear List confirmation
+--
+-- Clearing is destructive and Auctionator has no undo for it, so this
+-- always routes through a StaticPopup naming the specific list rather than
+-- wiring the button (or the /shopconv clear command) straight to
+-- Converter:ClearList.
+--------------------------------------------------------------------------
+
+StaticPopupDialogs["SHOPPINGCONVERTER_CLEAR_LIST"] = {
+  text = "Remove every item from Auctionator shopping list \"%s\"?\n\nThis cannot be undone.",
+  button1 = "Clear List",
+  button2 = CANCEL,
+  OnAccept = function(_, data)
+    if ns.Converter:ClearList(data.listName) then
+      ns.Print("Cleared \"%s\".", data.listName)
+    end
+    UI:Refresh()
+  end,
+  timeout = 0,
+  whileDead = true,
+  hideOnEscape = true,
+}
+
+-- Shared by the Clear List button and /shopconv clear: validates the list
+-- exists and isn't already empty before bothering to ask, then pops the
+-- confirmation named above.
+function UI:ConfirmClearList(listName)
+  if not listName or listName == "" then
+    return
+  end
+
+  if not tContains(ns.Converter:GetShoppingListNames(), listName) then
+    ns.Print("\"%s\" is not an Auctionator shopping list.", listName)
+    return
+  end
+
+  if ns.Converter:GetShoppingListItemCount(listName) == 0 then
+    ns.Print("\"%s\" is already empty.", listName)
+    return
+  end
+
+  StaticPopup_Show("SHOPPINGCONVERTER_CLEAR_LIST", listName, nil, { listName = listName })
+end
+
+--------------------------------------------------------------------------
 -- Status reporting
 --------------------------------------------------------------------------
 
@@ -250,6 +295,14 @@ function UI:CreateTabContent()
   refreshButton:SetPoint("LEFT", dropdown, "RIGHT", 12, 0)
   refreshButton:SetScript("OnClick", function()
     UI:Refresh()
+  end)
+
+  local clearButton = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  clearButton:SetSize(90, 22)
+  clearButton:SetText("Clear List")
+  clearButton:SetPoint("LEFT", refreshButton, "RIGHT", 8, 0)
+  clearButton:SetScript("OnClick", function()
+    UI:ConfirmClearList(selectedList)
   end)
 
   statusText = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")

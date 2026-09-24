@@ -95,6 +95,21 @@ end
 
 local currentList = {}
 
+-- Backs the fake ListManager's GetByName/ClearList path: name -> { items = { ... } }.
+-- Item contents don't matter to ClearList, only the count and that DeleteItem
+-- actually removes the right one.
+local shoppingLists = {}
+
+local function makeShoppingList(name)
+  return {
+    GetName = function() return name end,
+    GetItemCount = function() return #shoppingLists[name].items end,
+    DeleteItem = function(_, index)
+      table.remove(shoppingLists[name].items, index)
+    end,
+  }
+end
+
 Auctionator = {
   API = {
     v1 = {
@@ -131,6 +146,12 @@ Auctionator = {
     ListManager = {
       GetCount = function() return 0 end,
       GetByIndex = function() return nil end,
+      GetByName = function(_, name)
+        if not shoppingLists[name] then
+          return nil
+        end
+        return makeShoppingList(name)
+      end,
     },
   },
 }
@@ -317,6 +338,33 @@ do
 end
 
 --------------------------------------------------------------------------
+-- Clearing a shopping list
+--------------------------------------------------------------------------
+
+do
+  shoppingLists["Test"] = { items = { "a", "b", "c" } }
+  equals(ns.Converter:GetShoppingListItemCount("Test"), 3,
+    "item count reflects the list's current contents")
+
+  local cleared = ns.Converter:ClearList("Test")
+  check(cleared, "ClearList reports success when items were removed")
+  equals(ns.Converter:GetShoppingListItemCount("Test"), 0, "ClearList empties every item")
+  equals(#shoppingLists["Test"].items, 0, "every item is actually gone, not just uncounted")
+end
+
+do
+  local cleared = ns.Converter:ClearList("Test")
+  check(not cleared, "ClearList reports nothing to do on an already-empty list")
+end
+
+do
+  local cleared = ns.Converter:ClearList("Does Not Exist")
+  check(not cleared, "ClearList is a no-op for a list that doesn't exist")
+  equals(ns.Converter:GetShoppingListItemCount("Does Not Exist"), 0,
+    "item count is 0 for a nonexistent list")
+end
+
+--------------------------------------------------------------------------
 -- Version formatting
 --------------------------------------------------------------------------
 
@@ -384,9 +432,13 @@ ns.AHTab = {
 }
 
 local shownDialog
+local clearRequested
 ns.UI = {
   ShowCopyDialog = function(_self, result, title)
     shownDialog = { result = result, title = title }
+  end,
+  ConfirmClearList = function(_self, listName)
+    clearRequested = listName
   end,
 }
 
@@ -425,7 +477,7 @@ do
   dispatch("bogus")
   equals(printedMessages[1], "Unknown command: bogus",
     "an unknown command says what was unrecognised (S4)")
-  equals(#plainLines, 14, "falls back to usage, one line per help entry")
+  equals(#plainLines, 15, "falls back to usage, one line per help entry")
   equals(plainLines[1],
     "  |cffffff00/shopconv|r, |cffffff00/shopconv options|r, |cffffff00/shopconv config|r, "
       .. "|cffffff00/shopconv gui|r - open the settings panel",
@@ -435,7 +487,7 @@ end
 do
   dispatch("help")
   equals(printedMessages[1], "test commands:", "help prints only the usage header, no error")
-  equals(#plainLines, 14, "help prints the same usage bogus falls back to")
+  equals(#plainLines, 15, "help prints the same usage bogus falls back to")
 end
 
 do
@@ -497,6 +549,18 @@ do
   ns.Cache:Set("Widget", nil, 55555)
   dispatch("cache clear")
   equals(ns.Cache:Count(), 0, "cache clear empties the item cache")
+end
+
+do
+  dispatch("clear")
+  equals(#printedMessages, 1, "clear with no list name prints a usage message")
+end
+
+do
+  clearRequested = nil
+  dispatch("Clear Test")
+  equals(clearRequested, "Test",
+    "clear forwards the list name, in its original case, to the confirmation popup")
 end
 
 do

@@ -3,14 +3,14 @@
 -- MIT License, Copyright (c) 2022 plusmouse
 -- Embedded verbatim: safely adds custom tabs to the Blizzard Auction House
 -- frame without causing taint issues.
-local lib = LibStub:NewLibrary("LibAHTab-1-0", 4)
+local lib = LibStub:NewLibrary("LibAHTab-1-0", 5)
 
 if not lib or lib.internalState then return end
 
 local MIN_TAB_WIDTH = 70
 local TAB_PADDING = 20
 local OFFSET_X = 3
-if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE then
+if WOW_PROJECT_ID ~= WOW_PROJECT_MAINLINE and WOW_PROJECT_ID ~= WOW_PROJECT_CAMELOT then
   OFFSET_X = -14
 end
 

@@ -2,6 +2,26 @@
 
 All notable changes to this addon are documented in this file.
 
+## [1.8.1]
+
+### Fixed
+- The Auction House tab row could run past the window edge, with the
+  Converter tab out of position and no error or message. Auctionator 341
+  ships LibAHTab minor 5, and tab ordering and window widening were pinned
+  to minor 4, so both switched themselves off. They now check the library's
+  internal structure instead of its version, and print a message once per
+  session if that structure ever really does change. The embedded LibAHTab
+  is also updated to minor 5.
+- Converter tab content now lines up: the output box, Select All, and the
+  version label share a right edge, the labels and the box share a left
+  edge, and the left and right window margins match.
+- Select All moved down to the "TSM Search String" row, directly above the
+  box it acts on.
+- The copy window's output box lines up with its Select All button and
+  status text.
+- The output box's text area now follows the box when the window widens
+  while the tab is open, and wrapped text no longer runs under the scroll bar.
+
 ## [1.8.0]
 
 ### Added

@@ -19,6 +19,21 @@ local copyDialog
 -- the slash command opens.
 --------------------------------------------------------------------------
 
+-- InputScrollFrameTemplate draws its visible border this far outside the
+-- scroll frame on every side, so anything lining up with the box has to
+-- offset by this much from the scroll frame's own edges.
+local BOX_BORDER_INSET = 5
+
+-- The template's scroll bar sits inside the scroll frame's right edge.
+-- Matches the gutter Blizzard's own InputScrollFrame_OnLoad leaves for it.
+local SCROLL_BAR_GUTTER = 18
+
+-- Space between the window's edges and the Converter tab's content. The tab
+-- frame is already inset CONTENT_FRAME_RIGHT_INSET from the window's right.
+local CONTENT_MARGIN = 16
+local CONTENT_FRAME_RIGHT_INSET = 4
+local CONTENT_RIGHT = CONTENT_MARGIN - CONTENT_FRAME_RIGHT_INSET
+
 local function CreateOutputPane(parent)
   local pane = {}
   pane.chunks = { "" }
@@ -39,6 +54,14 @@ local function CreateOutputPane(parent)
   editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
   editBox:SetScript("OnEditFocusGained", function(self) self:HighlightText() end)
   scrollFrame.CharCount:Hide()
+
+  function pane:SyncEditBoxWidth()
+    self.editBox:SetWidth(math.max(1, self.scrollFrame:GetWidth() - SCROLL_BAR_GUTTER))
+  end
+
+  -- The window can widen while this is showing (a sibling addon adding its
+  -- tab late), which OnShow alone would never notice.
+  scrollFrame:HookScript("OnSizeChanged", function() pane:SyncEditBoxWidth() end)
 
   local selectButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
   pane.selectButton = selectButton
@@ -259,10 +282,10 @@ function UI:CreateTabContent()
   local frame = CreateFrame("Frame", "ShoppingConverterTabFrame", AuctionHouseFrame)
   frame:SetPoint("TOP", 0, -40)
   frame:SetPoint("LEFT")
-  frame:SetPoint("BOTTOMRIGHT", -4, 27)
+  frame:SetPoint("BOTTOMRIGHT", -CONTENT_FRAME_RIGHT_INSET, 27)
 
   local label = frame:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-  label:SetPoint("TOPLEFT", 16, -16)
+  label:SetPoint("TOPLEFT", CONTENT_MARGIN, -16)
   label:SetText("Shopping List")
 
   dropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
@@ -307,13 +330,13 @@ function UI:CreateTabContent()
 
   statusText = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
   statusText:SetPoint("TOPLEFT", dropdown, "BOTTOMLEFT", 0, -10)
-  statusText:SetPoint("RIGHT", -16, 0)
+  statusText:SetPoint("RIGHT", -CONTENT_RIGHT, 0)
   statusText:SetJustifyH("LEFT")
   statusText:SetText("")
 
   warningText = frame:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
   warningText:SetPoint("TOPLEFT", statusText, "BOTTOMLEFT", 0, -4)
-  warningText:SetPoint("RIGHT", -16, 0)
+  warningText:SetPoint("RIGHT", -CONTENT_RIGHT, 0)
   warningText:SetJustifyH("LEFT")
   warningText:SetText("")
 
@@ -324,18 +347,23 @@ function UI:CreateTabContent()
   local pane = CreateOutputPane(frame)
   frame.pane = pane
 
-  pane.selectButton:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -20, -16)
+  -- Offset by the box's border so the visible box, not the scroll frame
+  -- inside it, is what lines up with the labels and the window margin.
+  pane.scrollFrame:SetPoint("TOPLEFT", outputLabel, "BOTTOMLEFT", BOX_BORDER_INSET, -8)
+  pane.scrollFrame:SetPoint("BOTTOMRIGHT", -(CONTENT_RIGHT + BOX_BORDER_INSET), 28)
+
+  -- Sits on the "TSM Search String" row, directly above the box it acts on.
+  -- Anchored to the box rather than the tab's corner so it follows that row
+  -- down when a warning line appears.
+  pane.selectButton:SetPoint("BOTTOMRIGHT", pane.scrollFrame, "TOPRIGHT", BOX_BORDER_INSET, BOX_BORDER_INSET + 4)
   pane.nextButton:SetPoint("RIGHT", pane.selectButton, "LEFT", -8, 0)
   pane.prevButton:SetPoint("RIGHT", pane.nextButton, "LEFT", -2, 0)
   pane.partLabel:SetPoint("RIGHT", pane.prevButton, "LEFT", -6, 0)
 
-  pane.scrollFrame:SetPoint("TOPLEFT", outputLabel, "BOTTOMLEFT", 8, -8)
-  pane.scrollFrame:SetPoint("BOTTOMRIGHT", -30, 28)
-
   local versionText = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
   -- Anchored below the scroll frame rather than independently to the tab's
   -- corner, so the two can't collide regardless of font size or UI scale.
-  versionText:SetPoint("TOPRIGHT", pane.scrollFrame, "BOTTOMRIGHT", 24, -12)
+  versionText:SetPoint("TOPRIGHT", pane.scrollFrame, "BOTTOMRIGHT", BOX_BORDER_INSET, -12)
   versionText:SetText(ns.VERSION)
 
   frame:SetScript("OnShow", function()
@@ -343,7 +371,7 @@ function UI:CreateTabContent()
     -- ancestors) have actually been laid out, which is guaranteed by the
     -- time this tab is shown. Setting it earlier, at creation time, can
     -- read a bogus pre-layout size and leave the box far too wide.
-    pane.editBox:SetWidth(pane.scrollFrame:GetWidth())
+    pane:SyncEditBoxWidth()
     UI:Refresh()
   end)
 
@@ -397,11 +425,13 @@ local function CreateCopyDialog()
   pane.prevButton:SetPoint("RIGHT", pane.nextButton, "LEFT", -2, 0)
   pane.partLabel:SetPoint("RIGHT", pane.prevButton, "LEFT", -6, 0)
 
-  pane.scrollFrame:SetPoint("TOPLEFT", 18, -78)
-  pane.scrollFrame:SetPoint("BOTTOMRIGHT", -32, 16)
+  -- Same border offset as the tab: the box lines up with Select All and the
+  -- status text at 14.
+  pane.scrollFrame:SetPoint("TOPLEFT", 14 + BOX_BORDER_INSET, -78)
+  pane.scrollFrame:SetPoint("BOTTOMRIGHT", -(14 + BOX_BORDER_INSET), 16)
 
   frame:SetScript("OnShow", function(self)
-    self.pane.editBox:SetWidth(self.pane.scrollFrame:GetWidth())
+    self.pane:SyncEditBoxWidth()
   end)
 
   return frame
@@ -415,7 +445,7 @@ function UI:ShowCopyDialog(result, title)
   copyDialog.status:SetText(warning and (status .. " " .. warning) or status)
 
   copyDialog:Show()
-  copyDialog.pane.editBox:SetWidth(copyDialog.pane.scrollFrame:GetWidth())
+  copyDialog.pane:SyncEditBoxWidth()
   copyDialog.pane:SetChunks(result.chunks)
   copyDialog.pane.editBox:SetFocus()
   copyDialog.pane.editBox:HighlightText()

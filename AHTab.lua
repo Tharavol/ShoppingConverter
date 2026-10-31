@@ -6,11 +6,13 @@ ns.AHTab = AHTab
 local TAB_ID = "ShoppingConverterTab"
 
 -- Tab ordering and the Auction House width fix both reach into LibAHTab's
--- private state, which carries no compatibility promise. Pinned to the minor
--- version those workarounds were written against: on a newer library we skip
--- them rather than risk erroring on a changed structure. The tab itself
--- still works, it just sits wherever the library puts it.
-local SUPPORTED_LIB_MINOR = 4
+-- private state, which carries no compatibility promise. Gated on the shape
+-- of that state rather than the library's minor version: another addon's
+-- newer copy always wins in LibStub, and a pin silently turned both
+-- workarounds off over a bump (minor 5) that never touched this structure.
+-- If the structure really does change we still skip them rather than risk
+-- erroring. The tab itself still works, it just sits wherever the library
+-- puts it.
 
 local TSM_TAB_ID = "TSM_AH_TAB"
 local AUCTIONATOR_SHOPPING_TAB_ID = "AuctionatorTabs_Shopping"
@@ -23,31 +25,40 @@ local originalAHWidth
 -- Guards below silently skip the tab-ordering/width-fix workarounds rather
 -- than error, per the compatibility note above. That's correct behavior,
 -- but a silent skip is exactly how a tab row running off the window edge
--- can happen with no Lua error to point at. Warn once per session instead
--- so it shows up in chat.
+-- can happen with no Lua error to point at. Warn once per session instead,
+-- debug setting or not, so it shows up in chat.
 local warnedInternalStateUnavailable = false
 
 local function GetLib()
   return LibStub("LibAHTab-1-0", true)
 end
 
--- True when it's safe to touch the library's internals.
+-- True when the library's internals still have every field PositionTab and
+-- EnsureWidth reach into. Exposed on AHTab so Tests/run.lua can exercise it
+-- directly.
+function AHTab.IsInternalStateUsable(internalState)
+  return type(internalState) == "table"
+    and type(internalState.Tabs) == "table"
+    and type(internalState.rootFrame) == "table"
+end
+
+-- Returns the library's internals when it's safe to touch them.
 local function GetInternalState()
   local lib = GetLib()
   if not lib or not lib.internalState then
     return nil
   end
 
-  local _, minor = LibStub:GetLibrary("LibAHTab-1-0", true)
-  if minor and minor > SUPPORTED_LIB_MINOR then
-    if ns.db.settings.debug and not warnedInternalStateUnavailable then
+  if not AHTab.IsInternalStateUsable(lib.internalState) then
+    if not warnedInternalStateUnavailable then
       warnedInternalStateUnavailable = true
+      local _, minor = LibStub:GetLibrary("LibAHTab-1-0", true)
       ns.Print(
-        "LibAHTab is running a newer version (minor %d) than this addon supports (minor %d). "
-          .. "Tab ordering and auto-widening are disabled this session to avoid touching a "
-          .. "changed internal structure - the Converter tab still works, but may run past "
-          .. "the window edge. An update to Shopping Converter may be needed.",
-        minor, SUPPORTED_LIB_MINOR)
+        "LibAHTab (minor %s) has changed its internal structure. Tab ordering and "
+          .. "auto-widening are disabled this session to avoid touching it - the Converter "
+          .. "tab still works, but may run past the window edge. An update to Shopping "
+          .. "Converter may be needed.",
+        tostring(minor))
     end
     return nil
   end

@@ -703,6 +703,33 @@ do
 end
 
 --------------------------------------------------------------------------
+-- LibAHTab internal structure check
+--
+-- The check looks only at shape, never the library's version, so a newer
+-- minor that leaves the structure alone keeps tab ordering and widening on.
+--------------------------------------------------------------------------
+
+do
+  local usable = AHTab.IsInternalStateUsable({ Tabs = {}, rootFrame = {} })
+  equals(usable, true, "internal state with Tabs and rootFrame is usable")
+end
+
+do
+  local usable = AHTab.IsInternalStateUsable({ rootFrame = {} })
+  equals(usable, false, "internal state missing Tabs is not usable")
+end
+
+do
+  local usable = AHTab.IsInternalStateUsable({ Tabs = {} })
+  equals(usable, false, "internal state missing rootFrame is not usable")
+end
+
+do
+  local usable = AHTab.IsInternalStateUsable(nil)
+  equals(usable, false, "absent internal state is not usable")
+end
+
+--------------------------------------------------------------------------
 
 print(("%d passed, %d failed"):format(passed, failed))
 for _, failure in ipairs(failures) do

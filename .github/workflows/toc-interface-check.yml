@@ -14,9 +14,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Retail only; defaults to flavor: retail, so no beta/PTR bumps.
+      # Retail and WoW Forever, no beta/PTR. The updater rewrites the whole Interface
+      # line from these flavors, so a flavor left out loses its version. Keep `|`
+      # (not `|-`): the action drops the last line when it has no trailing newline.
       - name: Update TOC Interface version
         uses: p3lim/toc-interface-updater@v4
+        with:
+          flavor: |
+            retail
+            forever
 
       - name: Commit if the Interface version changed
         run: |

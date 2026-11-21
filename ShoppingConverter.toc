@@ -1,4 +1,4 @@
-## Interface: 120105
+## Interface: 120105, 16001
 ## Title: Shopping Converter
 ## Notes: Adds an Auction House tab that converts an Auctionator shopping list into a TradeSkillMaster-compatible search string.
 ## Author: Tharavol, Claude

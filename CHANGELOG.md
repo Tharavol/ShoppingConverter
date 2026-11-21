@@ -13,6 +13,9 @@ https://github.com/Tharavol/ShoppingConverter
 
 ## [Unreleased]
 
+### Added
+- Loads on World of Warcraft: Forever as well as retail: the TOC now lists Interface 16001 (#44).
+
 ### Internal
 - Shopping-list access goes through `Auctionator.API.v1`
   (`GetShoppingListItems`, `DeleteShoppingListItem`) with one `pcall` at that
@@ -23,6 +26,7 @@ https://github.com/Tharavol/ShoppingConverter
   fallbacks (#41).
 - Trimmed long comments and moved the TOC `X-ReleaseNotes` summary into this
   file (#42).
+- The daily TOC Interface check now tracks both the retail and WoW Forever versions, so its bump no longer rewrites the Interface line to retail only (#45).
 
 ## [1.8.1]
 

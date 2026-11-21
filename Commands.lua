@@ -1,25 +1,15 @@
 local ADDON_NAME, ns = ...
 
 --------------------------------------------------------------------------
--- Slash command dispatch
---
--- A table of { name, help, handler } rather than an if-chain, so PrintUsage
--- can be derived from the same data Dispatch uses instead of duplicating
--- the command list by hand where it could silently drift out of sync.
---
--- Doesn't touch the game API directly - no CreateFrame, no SlashCmdList
--- registration, both of which stay in Core.lua - which is what lets the
--- offline suite load this module.
+-- Slash command dispatch. PrintUsage is derived from the same table as
+-- Dispatch. No direct game API use, so the offline suite can load it.
 --------------------------------------------------------------------------
 
 local Commands = {}
 ns.Commands = Commands
 
--- `bareToggles` controls what an empty value does: true means bare toggles
--- the current state and reports the result (S8 of the cross-addon slash
--- command standard), false means bare leaves the state alone and just
--- reports it -- used only by `cache`, whose bare form is documented as a
--- read-only stats query, not a toggle.
+-- `bareToggles`: an empty value toggles (S8) when true, or only reports the
+-- state when false (`cache`, whose bare form is a stats query).
 local function Toggle(key, value, label, bareToggles)
   if value == "on" then
     ns.db.settings[key] = true
@@ -30,25 +20,18 @@ local function Toggle(key, value, label, bareToggles)
       ns.db.settings[key] = not ns.db.settings[key]
     end
   else
-    -- Reject rather than silently ignore: an unrecognised value must not
-    -- report the unchanged state as though it had applied.
+    -- Reject rather than report the unchanged state as if it applied.
     ns.Print("'%s' - expected 'on' or 'off'.", value)
     return
   end
   ns.Print("%s is %s.", label, ns.db.settings[key] and "|cff00ff00on|r" or "|cffff0000off|r")
 end
 
--- `argument` keeps the original case of everything after the command word,
--- since shopping list names are case sensitive. `rest` is the same text
--- lowercased, for the on/off/clear values the other commands compare against.
---
--- "", "config" and "gui" are silent aliases of "options" (S5): each opens the
--- panel but carries no help text of its own, so PrintUsage doesn't repeat
--- the same line four times.
+-- `argument` keeps its case (list names are case sensitive); `rest` is
+-- lowercased. "", "config" and "gui" are help-less aliases of "options" (S5).
 local function OpenPanel() ns.Options:Open() end
 
--- Forward-declared so the "help" entry below can close over it before its
--- body (which needs COMMANDS to exist) is assigned further down.
+-- Forward-declared for the "help" entry.
 local PrintUsage
 
 local COMMANDS = {
@@ -135,8 +118,6 @@ local COMMANDS = {
         ns.Cache:Wipe()
         ns.Print("Item cache cleared.")
       else
-        -- bareToggles=false: the bare form is documented above as a stats
-        -- query, not a toggle, so it stays that way.
         Toggle("useCache", rest, "Item cache", false)
         ns.Print("%d cached item ID(s) for game build %s.", ns.Cache:Count(), ns.Cache:GetBuild() or "?")
       end
@@ -209,8 +190,6 @@ end
 
 local function Parse(input)
   local raw = input or ""
-  -- Parsed once: `command` and `rest` are lowercased for matching, while
-  -- `argument` keeps the case the player typed.
   local command, argument = raw:match("^%s*(%S*)%s*(.-)%s*$")
   return command:lower(), argument, argument:lower()
 end

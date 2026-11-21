@@ -1,20 +1,14 @@
 local ADDON_NAME, ns = ...
 
 --------------------------------------------------------------------------
--- Settings panel
---
--- Surfaces the toggles already reachable via /shopconv (see Commands.lua)
--- in the Blizzard Settings window, plus a cache-clear button that has no
--- persisted state of its own to mirror. Reads and writes the same
--- ns.db.settings keys the slash commands use, so neither entry point can
--- fall out of sync with the other.
+-- Settings panel: the /shopconv toggles plus a cache-clear button, backed
+-- by the same ns.db.settings keys as the slash commands.
 --------------------------------------------------------------------------
 
 local Options = {}
 ns.Options = Options
 
--- Exposed as Options.CHECKBOXES so Commands.lua's `status` can list the same
--- toggles under the same labels without a second hand-maintained copy.
+-- Also listed by Commands.lua's `status`.
 local CHECKBOXES = {
   {
     key = "useCache",
@@ -93,9 +87,7 @@ local function CreatePanel()
   return panel
 end
 
--- Registered once at load: the category needs to exist for the Settings
--- window to list it any time the player opens it, not just while the
--- Auction House is open.
+-- Registered at load so the category is always listed.
 function Options:Register()
   local panel = CreatePanel()
   local category = Settings.RegisterCanvasLayoutCategory(panel, ADDON_NAME)

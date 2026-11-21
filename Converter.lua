@@ -1,24 +1,17 @@
 local ADDON_NAME, ns = ...
 
 --------------------------------------------------------------------------
--- Auctionator shopping list -> TSM search string
---
--- The conversion itself is pure: terms in, string out. Everything slow or
--- stateful lives behind ns.Resolver, which is why this is the one piece of
--- the addon that could be exercised outside the game with a stub resolver.
+-- Auctionator shopping list -> TSM search string. Slow or stateful work
+-- lives behind ns.Resolver, so this runs offline with a stub resolver.
 --------------------------------------------------------------------------
 
 local Converter = {}
 ns.Converter = Converter
 
--- TradeSkillMaster's search box will not accept an unbounded string, so long
--- queues are split into parts the player pastes one at a time. Chosen
--- conservatively; adjust if TSM turns out to take more.
+-- TSM's search box rejects unbounded strings; longer output is split.
 local MAX_CHUNK_LENGTH = 1000
 
--- Auctionator search terms carry filters that have no TSM search-string
--- equivalent. Silently dropping them would misrepresent what the player
--- asked for, so they get counted and reported instead.
+-- Auctionator filters with no TSM equivalent; counted and reported.
 local UNCONVERTIBLE_FILTERS = {
   "minPrice", "maxPrice",
   "minLevel", "maxLevel",
@@ -44,104 +37,50 @@ end
 -- Shopping lists
 --------------------------------------------------------------------------
 
--- Auctionator's v1 API can read a list's contents but has no call to
--- enumerate list names, so this reaches into ListManager. Guarded
--- accordingly - a failure here just means an empty dropdown.
+-- Auctionator's v1 API has no call to enumerate list names, so this reaches
+-- into the internal ListManager; any failure there just means no names.
 function Converter:GetShoppingListNames()
   local names = {}
-
-  if not (Auctionator and Auctionator.Shopping and Auctionator.Shopping.ListManager) then
-    return names
-  end
-
-  local ok, count = pcall(function()
-    return Auctionator.Shopping.ListManager:GetCount()
-  end)
-  if not ok or not count then
-    return names
-  end
-
-  for i = 1, count do
-    local okList, list = pcall(function()
-      return Auctionator.Shopping.ListManager:GetByIndex(i)
-    end)
-    if okList and list then
-      local okName, name = pcall(function() return list:GetName() end)
-      if okName and name then
-        table.insert(names, name)
-      end
+  pcall(function()
+    local manager = Auctionator.Shopping.ListManager
+    for i = 1, manager:GetCount() do
+      table.insert(names, manager:GetByIndex(i):GetName())
     end
-  end
-
+  end)
   return names
 end
 
--- Shared by GetShoppingListItemCount and ClearList - both need the same
--- internal list object ListManager hands back, guarded the same way
--- GetShoppingListNames guards its own reach into ListManager.
-local function GetShoppingList(listName)
-  if not listName or not (Auctionator and Auctionator.Shopping and Auctionator.Shopping.ListManager) then
-    return nil
-  end
-
-  local ok, list = pcall(function()
-    return Auctionator.Shopping.ListManager:GetByName(listName)
-  end)
-  if not ok or not list then
-    return nil
-  end
-
-  return list
+-- API.v1 raises for a missing list; treat that as no items.
+local function GetListItems(listName)
+  local ok, items = pcall(Auctionator.API.v1.GetShoppingListItems, ns.CALLER_ID, listName)
+  return ok and items or nil
 end
 
--- Returns how many items `listName` currently holds, or 0 if it doesn't
--- exist or Auctionator isn't in a usable state. Used to decide whether
--- clearing a list is even worth confirming.
 function Converter:GetShoppingListItemCount(listName)
-  local list = GetShoppingList(listName)
-  if not list then
-    return 0
-  end
-
-  local ok, count = pcall(function() return list:GetItemCount() end)
-  return (ok and count) or 0
+  local items = GetListItems(listName)
+  return items and #items or 0
 end
 
--- Empties `listName` of every item, leaving the (now-empty) list itself in
--- place. Auctionator's v1 API has no bulk-clear call, and neither does the
--- internal list object - only DeleteItem(index), removing one item at a
--- time, which is the same call Auctionator's own shopping tab uses to
--- remove a single item. Walked from the end of the list backwards so
--- removing an item never shifts the index of one still waiting to be
--- removed.
---
--- Returns true if anything was actually removed, false if the list is
--- missing, already empty, or Auctionator isn't in a usable state.
+-- Empties `listName` but keeps the list. v1 has no bulk clear, so each item is
+-- removed by its search string. Returns true if anything was removed.
 function Converter:ClearList(listName)
-  local list = GetShoppingList(listName)
-  if not list then
+  local items = GetListItems(listName)
+  if not items or #items == 0 then
     return false
   end
 
-  local ok, count = pcall(function() return list:GetItemCount() end)
-  if not ok or not count or count == 0 then
-    return false
-  end
-
-  for index = count, 1, -1 do
-    pcall(function() list:DeleteItem(index) end)
-  end
+  pcall(function()
+    for index = #items, 1, -1 do
+      Auctionator.API.v1.DeleteShoppingListItem(ns.CALLER_ID, listName, items[index])
+    end
+  end)
 
   return true
 end
 
 local function GetTerms(listName)
-  if not listName or not (Auctionator and Auctionator.API and Auctionator.API.v1) then
-    return nil
-  end
-
-  local ok, items = pcall(Auctionator.API.v1.GetShoppingListItems, ns.CALLER_ID, listName)
-  if not ok or not items then
+  local items = GetListItems(listName)
+  if not items then
     return nil
   end
 
@@ -165,8 +104,7 @@ local function BuildPart(term, itemID)
   if itemID then
     part = "i:" .. itemID
   else
-    -- A bare name is the last-resort fallback. Strip the characters TSM uses
-    -- as delimiters so an odd item name can't corrupt the rest of the string.
+    -- Name fallback: strip TSM's delimiters so it can't corrupt the string.
     part = term.searchString:gsub("[;/]", " "):gsub("%s+", " "):gsub("^%s+", ""):gsub("%s+$", "")
   end
 
@@ -212,8 +150,7 @@ end
 
 local currentGeneration = 0
 
--- Delay between successive live Auction House queries. Purely a courtesy to
--- the server; resolutions that don't hit the AH skip it entirely.
+-- Delay between live AH queries, as a courtesy to the server.
 local LIVE_QUERY_INTERVAL = 0.6
 
 -- Builds the TSM string for `listName`.
@@ -226,8 +163,7 @@ local LIVE_QUERY_INTERVAL = 0.6
 --     droppedFilters, liveQueries,
 --   }
 --
--- onProgress(index, total) is called before each item that needs a live
--- Auction House query, which are the only ones slow enough to notice.
+-- onProgress(index, total) is called before each item needing a live AH query.
 function Converter:Build(listName, onComplete, onProgress)
   currentGeneration = currentGeneration + 1
   local generation = currentGeneration
@@ -263,9 +199,7 @@ function Converter:Build(listName, onComplete, onProgress)
     onComplete(result)
   end
 
-  -- Iterative rather than recursive: a list resolved entirely from CraftSim
-  -- or the cache calls back synchronously for every item, which as recursion
-  -- would put one stack frame per item on a list that can run to hundreds.
+  -- Iterative: synchronous resolutions would otherwise recurse once per item.
   local function ProcessNext()
     while true do
       if generation ~= currentGeneration then

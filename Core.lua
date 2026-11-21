@@ -5,35 +5,26 @@ ns.ADDON_NAME = ADDON_NAME
 -- Auctionator's public API requires every caller to identify itself.
 ns.CALLER_ID = ADDON_NAME
 
-local GetAddOnMetadataCompat = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
-ns.IsAddOnLoaded = (C_AddOns and C_AddOns.IsAddOnLoaded) or IsAddOnLoaded
-ns.VERSION = ns.FormatVersion(GetAddOnMetadataCompat(ADDON_NAME, "Version"))
+ns.IsAddOnLoaded = C_AddOns.IsAddOnLoaded
+ns.VERSION = ns.FormatVersion(C_AddOns.GetAddOnMetadata(ADDON_NAME, "Version"))
 
--- The shopping list CraftSim generates from its craft queue
--- (CraftSim.CONST.AUCTIONATOR_SHOPPING_LIST_QUEUE_NAME). Preferred as the
--- default selection when it exists.
+-- CraftSim's craft-queue list (CraftSim.CONST.AUCTIONATOR_SHOPPING_LIST_QUEUE_NAME);
+-- the default selection when it exists.
 ns.DEFAULT_LIST_NAME = "CraftSim CraftQueue"
 
 --------------------------------------------------------------------------
 -- Saved variables
 --------------------------------------------------------------------------
 
--- SavedVariables are only populated once this addon's own files have all
--- finished running, right before ADDON_LOADED fires for it - reading the
--- global any earlier than that always finds nil, so this has to wait for
--- that event rather than running at file load time.
+-- SavedVariables are only available from this addon's ADDON_LOADED.
 local DB_VERSION = 2
 
 -- Shared with Commands.lua's `reset`, so the two can't drift apart.
 ns.DEFAULT_SETTINGS = {
-  -- Off by default: the version is already shown on the tab itself, and
-  -- unsolicited login spam is the most common complaint about small addons.
   printOnLogin = false,
   useCraftSim = true,
   useCache = true,
-  -- Off by default: these are diagnostics for tracking down AH tab layout
-  -- issues (ordering, window-width fitting), not something most players
-  -- need to see.
+  -- AH tab layout diagnostics.
   debug = false
 }
 
@@ -41,9 +32,7 @@ local function InitializeDB()
   ShoppingConverterDB = ShoppingConverterDB or {}
   local db = ShoppingConverterDB
 
-  -- v1 stored `lastList` at the top level and had no other structure. Nothing
-  -- from it needs moving, but stamp the version so future migrations have a
-  -- floor to work from.
+  -- v1 had no structure worth migrating; stamp a version for future migrations.
   db.version = db.version or DB_VERSION
 
   db.settings = db.settings or {}
@@ -74,10 +63,7 @@ end
 -- Events
 --------------------------------------------------------------------------
 
--- Parented explicitly: an anonymous frame with no parent and no other Lua
--- reference (this one isn't captured by its own OnEvent closure) is eligible
--- for garbage collection, which silently stops event delivery with no error.
--- Parenting to UIParent keeps it alive for the life of the session.
+-- Parented so it can't be garbage collected and silently stop receiving events.
 local eventFrame = CreateFrame("Frame", nil, UIParent)
 eventFrame:RegisterEvent("ADDON_LOADED")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
@@ -103,8 +89,7 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
   end
 
   if event == "AUCTION_HOUSE_CLOSED" then
-    -- Any live browse query in flight is now dead, and continuing to walk the
-    -- list would just queue queries that can never succeed.
+    -- In-flight and queued browse queries can no longer succeed.
     ns.Resolver:Abort()
     ns.Converter:Abort()
     ns.AHTab:RestoreAuctionHouseWidth()

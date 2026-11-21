@@ -12,20 +12,14 @@ local selectedList
 local copyDialog
 
 --------------------------------------------------------------------------
--- Output pane
---
--- A copyable text box plus the paging controls for lists too long to fit in
--- one TSM search. Shared by the Auction House tab and the standalone window
--- the slash command opens.
+-- Output pane: copyable text box plus paging for multi-part output. Shared
+-- by the AH tab and the slash-command window.
 --------------------------------------------------------------------------
 
--- InputScrollFrameTemplate draws its visible border this far outside the
--- scroll frame on every side, so anything lining up with the box has to
--- offset by this much from the scroll frame's own edges.
+-- InputScrollFrameTemplate draws its border this far outside the scroll frame.
 local BOX_BORDER_INSET = 5
 
--- The template's scroll bar sits inside the scroll frame's right edge.
--- Matches the gutter Blizzard's own InputScrollFrame_OnLoad leaves for it.
+-- Scroll bar gutter, matching Blizzard's InputScrollFrame_OnLoad.
 local SCROLL_BAR_GUTTER = 18
 
 -- Space between the window's edges and the Converter tab's content. The tab
@@ -46,9 +40,7 @@ local function CreateOutputPane(parent)
   pane.editBox = editBox
   editBox:SetMultiLine(true)
   editBox:SetMaxLetters(0)
-  -- Never steal focus on its own: the Auction House tab is shown as a side
-  -- effect of clicking a tab, and an auto-focused edit box swallows the
-  -- movement keys until the player thinks to press Escape.
+  -- An auto-focused box would swallow movement keys when the tab opens.
   editBox:SetAutoFocus(false)
   editBox:SetFontObject(ChatFontNormal)
   editBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
@@ -59,8 +51,7 @@ local function CreateOutputPane(parent)
     self.editBox:SetWidth(math.max(1, self.scrollFrame:GetWidth() - SCROLL_BAR_GUTTER))
   end
 
-  -- The window can widen while this is showing (a sibling addon adding its
-  -- tab late), which OnShow alone would never notice.
+  -- The window can widen while shown (another addon adding a tab late).
   scrollFrame:HookScript("OnSizeChanged", function() pane:SyncEditBoxWidth() end)
 
   local selectButton = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
@@ -114,12 +105,7 @@ local function CreateOutputPane(parent)
 end
 
 --------------------------------------------------------------------------
--- Clear List confirmation
---
--- Clearing is destructive and Auctionator has no undo for it, so this
--- always routes through a StaticPopup naming the specific list rather than
--- wiring the button (or the /shopconv clear command) straight to
--- Converter:ClearList.
+-- Clear List confirmation: clearing cannot be undone, so it always asks.
 --------------------------------------------------------------------------
 
 StaticPopupDialogs["SHOPPINGCONVERTER_CLEAR_LIST"] = {
@@ -137,9 +123,7 @@ StaticPopupDialogs["SHOPPINGCONVERTER_CLEAR_LIST"] = {
   hideOnEscape = true,
 }
 
--- Shared by the Clear List button and /shopconv clear: validates the list
--- exists and isn't already empty before bothering to ask, then pops the
--- confirmation named above.
+-- Shared by the Clear List button and /shopconv clear.
 function UI:ConfirmClearList(listName)
   if not listName or listName == "" then
     return
@@ -265,9 +249,7 @@ function UI:Refresh()
       statusText:SetText(status)
       warningText:SetText(warning or "")
       if result.total > 0 then
-        -- Unlike the tab opening, the player asked for this: the string is
-        -- now ready and copying it is the whole point, so grab focus and
-        -- select it instead of waiting on the Select All button.
+        -- The player asked for this conversion, so select it for copying.
         pane.editBox:SetFocus()
         pane.editBox:HighlightText()
       end
@@ -291,8 +273,7 @@ function UI:CreateTabContent()
   dropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
   dropdown:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -6)
   dropdown:SetSize(240, 26)
-  -- The generator runs every time the menu opens, so lists added or removed
-  -- while the tab sits open show up without needing a refresh.
+  -- Runs on every open, so list changes show without a refresh.
   dropdown:SetupMenu(function(_, rootDescription)
     local names = ns.Converter:GetShoppingListNames()
     if #names == 0 then
@@ -347,37 +328,29 @@ function UI:CreateTabContent()
   local pane = CreateOutputPane(frame)
   frame.pane = pane
 
-  -- Offset by the box's border so the visible box, not the scroll frame
-  -- inside it, is what lines up with the labels and the window margin.
+  -- Offset so the visible border lines up with the labels and margin.
   pane.scrollFrame:SetPoint("TOPLEFT", outputLabel, "BOTTOMLEFT", BOX_BORDER_INSET, -8)
   pane.scrollFrame:SetPoint("BOTTOMRIGHT", -(CONTENT_RIGHT + BOX_BORDER_INSET), 28)
 
-  -- Sits on the "TSM Search String" row, directly above the box it acts on.
-  -- Anchored to the box rather than the tab's corner so it follows that row
-  -- down when a warning line appears.
+  -- Anchored to the box so it follows the row down when a warning appears.
   pane.selectButton:SetPoint("BOTTOMRIGHT", pane.scrollFrame, "TOPRIGHT", BOX_BORDER_INSET, BOX_BORDER_INSET + 4)
   pane.nextButton:SetPoint("RIGHT", pane.selectButton, "LEFT", -8, 0)
   pane.prevButton:SetPoint("RIGHT", pane.nextButton, "LEFT", -2, 0)
   pane.partLabel:SetPoint("RIGHT", pane.prevButton, "LEFT", -6, 0)
 
   local versionText = frame:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-  -- Anchored below the scroll frame rather than independently to the tab's
-  -- corner, so the two can't collide regardless of font size or UI scale.
+  -- Anchored to the box so the two can't collide.
   versionText:SetPoint("TOPRIGHT", pane.scrollFrame, "BOTTOMRIGHT", BOX_BORDER_INSET, -12)
   versionText:SetText(ns.VERSION)
 
   frame:SetScript("OnShow", function()
-    -- Only safe to read the scroll frame's real width once it (and its
-    -- ancestors) have actually been laid out, which is guaranteed by the
-    -- time this tab is shown. Setting it earlier, at creation time, can
-    -- read a bogus pre-layout size and leave the box far too wide.
+    -- The scroll frame's width is only reliable once laid out.
     pane:SyncEditBoxWidth()
     UI:Refresh()
   end)
 
   frame:SetScript("OnHide", function()
-    -- Leaving the tab mid-conversion used to leave live Auction House
-    -- queries running, competing with whatever the player did next.
+    -- Stop live AH queries when leaving the tab.
     ns.Converter:Abort()
     ns.Resolver:Abort()
   end)
@@ -425,8 +398,7 @@ local function CreateCopyDialog()
   pane.prevButton:SetPoint("RIGHT", pane.nextButton, "LEFT", -2, 0)
   pane.partLabel:SetPoint("RIGHT", pane.prevButton, "LEFT", -6, 0)
 
-  -- Same border offset as the tab: the box lines up with Select All and the
-  -- status text at 14.
+  -- Same border offset as the tab.
   pane.scrollFrame:SetPoint("TOPLEFT", 14 + BOX_BORDER_INSET, -78)
   pane.scrollFrame:SetPoint("BOTTOMRIGHT", -(14 + BOX_BORDER_INSET), 16)
 

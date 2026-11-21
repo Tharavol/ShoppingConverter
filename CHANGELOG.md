@@ -2,6 +2,28 @@
 
 All notable changes to this addon are documented in this file.
 
+Shopping Converter adds a Converter tab to the Blizzard Auction House that
+turns an Auctionator shopping list into a TradeSkillMaster search string
+(`i:<itemID>/x<qty>`, semicolon-joined), preserving reagent quality ranks.
+Item IDs come from CraftSim's craft queue when installed, a cross-session
+cache, or the Auction House. Long output is split into pasteable parts.
+Auctionator is required; CraftSim and TradeSkillMaster are optional.
+`/shopconv help` lists the commands. Source, issues and release notes:
+https://github.com/Tharavol/ShoppingConverter
+
+## [Unreleased]
+
+### Internal
+- Shopping-list access goes through `Auctionator.API.v1`
+  (`GetShoppingListItems`, `DeleteShoppingListItem`) with one `pcall` at that
+  boundary; only listing list names still reads Auctionator's internal
+  `ListManager`, inside a single `pcall` (#40).
+- Removed `pcall`s and existence checks around Blizzard and LibAHTab calls
+  that do not throw, and the dead `GetAddOnMetadata`/`IsAddOnLoaded`
+  fallbacks (#41).
+- Trimmed long comments and moved the TOC `X-ReleaseNotes` summary into this
+  file (#42).
+
 ## [1.8.1]
 
 ### Fixed

@@ -40,7 +40,7 @@ read_globals = {
     "tContains", "wipe",
 
     -- Addon metadata
-    "GetAddOnMetadata", "GetBuildInfo", "IsAddOnLoaded", "LibStub",
+    "GetBuildInfo", "LibStub",
 
     -- Dependencies declared in the .toc
     "Auctionator", -- ## Dependencies

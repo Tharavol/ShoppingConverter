@@ -5,14 +5,10 @@ ns.AHTab = AHTab
 
 local TAB_ID = "ShoppingConverterTab"
 
--- Tab ordering and the Auction House width fix both reach into LibAHTab's
--- private state, which carries no compatibility promise. Gated on the shape
--- of that state rather than the library's minor version: another addon's
--- newer copy always wins in LibStub, and a pin silently turned both
--- workarounds off over a bump (minor 5) that never touched this structure.
--- If the structure really does change we still skip them rather than risk
--- erroring. The tab itself still works, it just sits wherever the library
--- puts it.
+-- Tab ordering and the width fix reach into LibAHTab's private state. Another
+-- addon's newer copy may win in LibStub, so they are gated on that state's
+-- shape rather than the minor version, and skipped (with a one-time warning)
+-- if it changes.
 
 local TSM_TAB_ID = "TSM_AH_TAB"
 local AUCTIONATOR_SHOPPING_TAB_ID = "AuctionatorTabs_Shopping"
@@ -22,30 +18,25 @@ local TAB_OFFSET_X = 3
 
 local originalAHWidth
 
--- Guards below silently skip the tab-ordering/width-fix workarounds rather
--- than error, per the compatibility note above. That's correct behavior,
--- but a silent skip is exactly how a tab row running off the window edge
--- can happen with no Lua error to point at. Warn once per session instead,
--- debug setting or not, so it shows up in chat.
 local warnedInternalStateUnavailable = false
 
 local function GetLib()
-  return LibStub("LibAHTab-1-0", true)
+  return LibStub("LibAHTab-1-0")
 end
 
--- True when the library's internals still have every field PositionTab and
--- EnsureWidth reach into. Exposed on AHTab so Tests/run.lua can exercise it
--- directly.
+-- True when the internals still have every field PositionTab and EnsureWidth
+-- use. Exposed for Tests/run.lua.
 function AHTab.IsInternalStateUsable(internalState)
-  return type(internalState) == "table"
-    and type(internalState.Tabs) == "table"
-    and type(internalState.rootFrame) == "table"
+  return internalState ~= nil
+    and internalState.Tabs ~= nil
+    and internalState.rootFrame ~= nil
 end
 
--- Returns the library's internals when it's safe to touch them.
+-- Returns the library's internals when it's safe to touch them. They stay
+-- nil until the first tab is created.
 local function GetInternalState()
   local lib = GetLib()
-  if not lib or not lib.internalState then
+  if not lib.internalState then
     return nil
   end
 
@@ -72,36 +63,27 @@ end
 
 local function CreateTab()
   local lib = GetLib()
-  if not lib or lib:DoesIDExist(TAB_ID) then
+  if lib:DoesIDExist(TAB_ID) then
     return
   end
 
   lib:CreateTab(TAB_ID, ns.UI:CreateTabContent(), "Converter", "Shopping List Converter")
 
-  -- LibAHTab resizes the tab button to fit its text with no max width,
-  -- and this button template renders far wider than expected for it.
-  -- Re-clamp it ourselves rather than patching the vendored library.
-  local button = lib:GetButton(TAB_ID)
-  if button then
-    PanelTemplates_TabResize(button, 20, nil, 70, 100)
-  end
+  -- LibAHTab sizes the button to its text with no max width; clamp it here
+  -- rather than patching the vendored library.
+  PanelTemplates_TabResize(lib:GetButton(TAB_ID), 20, nil, 70, 100)
 end
 
 --------------------------------------------------------------------------
--- Ordering
---
--- Other AH-tab addons (TSM, Auctionator) add their tabs off their own hooks
--- into the AH opening, in no guaranteed order relative to ours, so
--- LibAHTab's default left-to-right order (tab creation order) lands us in a
--- different spot each session. Rebuild the anchor chain so our tab always
--- sits directly between TSM's tab and Auctionator's Shopping tab, keeping
--- every other known tab in its original relative order.
+-- Ordering: LibAHTab orders tabs by creation, which varies per session.
+-- Re-anchor so ours sits between TSM's tab and Auctionator's Shopping tab,
+-- keeping every other tab in its relative order.
 --------------------------------------------------------------------------
 
 local function PositionTab()
   local lib = GetLib()
   local internalState = GetInternalState()
-  if not lib or not internalState then
+  if not internalState then
     return
   end
 
@@ -142,67 +124,30 @@ local function PositionTab()
 end
 
 --------------------------------------------------------------------------
--- Auction House width
+-- Auction House width: widen the fixed-width window just enough to fit the
+-- tab row, always from the original width so resizes never compound.
 --
--- Adding a tab can push the tab row past the right edge of the (fixed
--- width) Auction House window. Widen the window by just enough to fit it.
--- This always recomputes from the ORIGINAL width captured on first run,
--- rather than from the window's current (possibly already-widened) width,
--- so repeated calls across AH opens never compound on top of a previous
--- resize.
---------------------------------------------------------------------------
-
---------------------------------------------------------------------------
--- Auction House list columns
---
--- Every Auction House results list - Browse, each of Auctions' sub-tabs,
--- Sell, the per-item Buy view - computes its column widths exactly once,
--- the first time that panel is shown, then never revisits them: there's no
--- OnSizeChanged handler anywhere in Blizzard's Auction House code for it.
--- Widening the frame above leaves those columns exactly where they were,
--- short of the new right edge. Re-running a list's own layout function -
--- the same call Blizzard makes when a column's sort order or shape
--- changes - re-measures it against the current width and closes the gap.
+-- Blizzard's AH result lists size their columns once, on first show, so
+-- after widening, each list's layout function is re-run to fill the new width.
 --------------------------------------------------------------------------
 
 local function RearrangeItemList(itemList)
-  local ok, err = pcall(itemList.SetTableBuilderLayout, itemList, itemList.tableBuilderLayoutFunction)
-  if not ok and ns.db.settings.debug then
-    ns.Print("Couldn't re-arrange an Auction House list's columns after widening the window: %s", tostring(err))
-  end
+  itemList:SetTableBuilderLayout(itemList.tableBuilderLayoutFunction)
 
-  -- AuctionHouseItemListMixin:OnLoad() calls AuctionHouseBackgroundMixin.OnLoad()
-  -- on this same frame, which sizes .Background to its atlas's native pixel
-  -- size (SetAtlas(atlas, true) - true means "use the atlas's own size") and
-  -- anchors it at a single TOPLEFT point: fixed at whatever the frame's width
-  -- was at load time, the same "never designed to be resized" problem as the
-  -- columns above, just for the fill art instead of the layout. The NineSlice
-  -- border, right next to it in that same OnLoad, is anchored TOPLEFT and
-  -- BOTTOMRIGHT and so already stretches correctly on its own - which is why
-  -- the outer edge lines up with the widened window but the fill doesn't.
-  -- Re-anchored the same way the NineSlice already is, with useAtlasSize
-  -- turned off so the anchors (not the atlas's native size) govern it.
+  -- AuctionHouseBackgroundMixin.OnLoad sizes .Background to the atlas with a
+  -- single TOPLEFT anchor; anchor it like the NineSlice so it stretches too.
   if itemList.Background and itemList.backgroundAtlas then
     local xOffset = itemList.backgroundXOffset or 0
     local yOffset = itemList.backgroundYOffset or 0
-    local bgOk, bgErr = pcall(function()
-      itemList.Background:SetAtlas(itemList.backgroundAtlas, false)
-      itemList.Background:ClearAllPoints()
-      itemList.Background:SetPoint("TOPLEFT", xOffset + 3, yOffset - 3)
-      itemList.Background:SetPoint("BOTTOMRIGHT")
-    end)
-    if not bgOk and ns.db.settings.debug then
-      ns.Print("Couldn't re-stretch an Auction House list's background after widening the window: %s", tostring(bgErr))
-    end
+    itemList.Background:SetAtlas(itemList.backgroundAtlas, false)
+    itemList.Background:ClearAllPoints()
+    itemList.Background:SetPoint("TOPLEFT", xOffset + 3, yOffset - 3)
+    itemList.Background:SetPoint("BOTTOMRIGHT")
   end
 end
 
--- Recurses the Auction House frame tree looking for anything shaped like a
--- Blizzard item list - has a stored layout function and the method that
--- (re)applies it - rather than hard-coding each tab's frame path. Browse,
--- every Auctions sub-tab, Sell, and the per-item Buy view all share that
--- shape, and a generic scan keeps working if Blizzard adds or renames a
--- tab, rather than silently missing a newly added one.
+-- Finds every Blizzard item list in the AH frame tree by shape rather than
+-- by hard-coded frame paths.
 local function RearrangeItemLists(frame)
   for _, child in ipairs({ frame:GetChildren() }) do
     if type(child.SetTableBuilderLayout) == "function" and child.tableBuilderLayoutFunction then
@@ -212,17 +157,8 @@ local function RearrangeItemLists(frame)
   end
 end
 
--- Tab additions arrive as a burst - TSM, Auctionator's Shopping tab, and its
--- async "Collecting(s)" tab can each trigger their own EnsureWidth() call
--- within a frame or two of each other, and every one of those calls resets
--- AuctionHouseFrame to originalAHWidth before recomputing. A single call's
--- deferred rearrange can land in that same window and read a transiently
--- narrow ScrollBox instead of the eventual final one - a fixed one-frame
--- defer confirmed this in testing (fixed on demand well after the AH
--- settled, but not from the automatic hook alone). Debounced instead: each
--- width change bumps a generation counter and schedules a check against it,
--- so only the last call in a burst - the one still current once things go
--- quiet - actually rearranges anything.
+-- Debounced: tab additions arrive in bursts, each EnsureWidth() briefly
+-- resets the width, and a rearrange mid-burst measures a too-narrow list.
 local rearrangeGeneration = 0
 
 local function ScheduleRearrange()
@@ -235,11 +171,7 @@ local function ScheduleRearrange()
   end)
 end
 
--- Pure width math, pulled out of EnsureWidth so it can be unit tested
--- without a real AuctionHouseFrame. Given the original (un-widened) frame
--- width, that frame's current right edge, how far right the tab row
--- reaches, and a hard ceiling, returns the width the frame should be set
--- to. Exposed on AHTab so Tests/run.lua can exercise it directly.
+-- Pure width math from EnsureWidth, exposed for Tests/run.lua.
 function AHTab.ComputeNewWidth(originalWidth, frameRight, rowRight, maxWidth)
   local overflow = rowRight - frameRight
   local newWidth = originalWidth
@@ -257,7 +189,7 @@ local warnedOverflow = false
 local function EnsureWidth()
   local lib = GetLib()
   local internalState = GetInternalState()
-  if not lib or not internalState or not AuctionHouseFrame then
+  if not internalState or not AuctionHouseFrame then
     return
   end
 
@@ -265,8 +197,7 @@ local function EnsureWidth()
     return
   end
 
-  -- Our tab is no longer necessarily the rightmost after repositioning,
-  -- so measure the whole row's right edge, not just our own button.
+  -- Measure the whole row; our tab isn't necessarily rightmost.
   local rowRight
   for _, tab in ipairs(internalState.Tabs) do
     local right = tab:GetRight()
@@ -282,31 +213,18 @@ local function EnsureWidth()
   local previousWidth = AuctionHouseFrame:GetWidth()
   AuctionHouseFrame:SetWidth(originalAHWidth)
 
-  -- Safety net: never let the window grow past the screen, no matter what
-  -- the width math below produces.
+  -- Never grow the window past the screen.
   local maxWidth = GetScreenWidth() - 40
   local newWidth = AHTab.ComputeNewWidth(
     originalAHWidth, AuctionHouseFrame:GetRight(), rowRight, maxWidth)
 
   AuctionHouseFrame:SetWidth(newWidth)
 
-  -- Blizzard's Browse/Auctions/Sell/Buy list columns are stretched to this
-  -- frame but only ever measure their own width once, the first time each
-  -- is shown - resizing the frame alone leaves their columns exactly where
-  -- they were, short of the new edge. Only worth redoing when the width
-  -- actually moved; see ScheduleRearrange for why this is debounced rather
-  -- than just deferred a frame.
   if newWidth ~= previousWidth then
     ScheduleRearrange()
   end
 
-  -- Confirm the resize actually closed the gap. It should always, since
-  -- newWidth is derived from rowRight - but the screen-width ceiling above
-  -- can still leave the row hanging off the edge on a very cluttered tab
-  -- bar, and a stale rowRight (measured before a sibling addon finished
-  -- adding its tab) could too. Either way, that's the exact "tabs run past
-  -- the window edge, no error" symptom, so surface it instead of letting
-  -- it pass quietly.
+  -- The screen ceiling or a stale rowRight can still leave the row overflowing.
   if rowRight > AuctionHouseFrame:GetRight() + 1 then
     if ns.db.settings.debug and not warnedOverflow then
       warnedOverflow = true
@@ -321,8 +239,7 @@ local function EnsureWidth()
   end
 end
 
--- Leaving the window wide after the player closes the Auction House affects
--- every other addon that measures or anchors to it, so hand it back.
+-- Other addons measure or anchor to the window, so restore it on close.
 function AHTab:RestoreAuctionHouseWidth()
   if originalAHWidth and AuctionHouseFrame then
     AuctionHouseFrame:SetWidth(originalAHWidth)
@@ -335,33 +252,17 @@ end
 
 local hookedCreateTab = false
 
--- PositionTab()'s SetPoint calls don't take effect for GetRight() purposes
--- until the next layout pass, so measuring in the same tick that just
--- repositioned everything reads stale (too-narrow) anchors and undershoots
--- the resize. That was already true of PositionTab() relative to whatever
--- event triggers it below (handled by deferring a frame before calling
--- this), but it's just as true of EnsureWidth() relative to PositionTab()
--- itself - calling them back to back in the same tick, as before, left
--- exactly this race in place one level deeper: usually fine, occasionally
--- not, which is why the tab row could still run off the edge every so
--- often even after that first fix. Deferring EnsureWidth() its own frame
--- closes it for good.
+-- SetPoint changes don't show in GetRight() until the next layout pass, so
+-- EnsureWidth is deferred a frame after PositionTab.
 local function PositionAndEnsureWidth()
   PositionTab()
   C_Timer.After(0, EnsureWidth)
 end
 
--- Fires every time ANY addon adds a tab to the shared AH tab row, including
--- ones that show up well after the AH first opens (e.g. an addon that waits
--- on its own async data before adding its tab). A fixed-delay retry can only
--- guess how long to wait and guesses wrong some of the time, silently and
--- without a scale to warn against - reacting to the actual event that
--- changes the row's width is exact regardless of timing.
+-- Fires whenever any addon adds a tab, including late async ones.
 local function OnLibTabCreated(_, tabID)
   if tabID == TAB_ID then
-    -- Our own creation is handled by the deferred pass below, which runs
-    -- after CreateTab()'s own re-clamp of this button's width - reacting to
-    -- it here would measure the row before that clamp has applied.
+    -- Handled by OnAuctionHouseShow's deferred pass, after CreateTab's clamp.
     return
   end
 
@@ -371,35 +272,26 @@ end
 function AHTab:OnAuctionHouseShow()
   CreateTab()
 
-  local lib = GetLib()
-  if lib and not hookedCreateTab then
+  if not hookedCreateTab then
     hookedCreateTab = true
-    hooksecurefunc(lib, "CreateTab", OnLibTabCreated)
+    hooksecurefunc(GetLib(), "CreateTab", OnLibTabCreated)
   end
 
-  -- Deferred a frame: other addons that also add AH tabs off this same
-  -- event may not have added theirs yet, and positioning or measuring the
-  -- tab row before they do would miss them. Tabs added later than this are
-  -- now caught by the CreateTab hook above instead of a second guess here.
+  -- Deferred so tabs other addons add off this same event are included.
   C_Timer.After(0, PositionAndEnsureWidth)
 end
 
 function AHTab:IsAvailable()
-  local lib = GetLib()
-  return lib ~= nil
-    and AuctionHouseFrame ~= nil
+  return AuctionHouseFrame ~= nil
     and AuctionHouseFrame:IsShown()
-    and lib:DoesIDExist(TAB_ID)
+    and GetLib():DoesIDExist(TAB_ID)
 end
 
--- Selects the Converter tab. Returns false when the Auction House isn't
--- open, so the caller can say something more useful than nothing happening.
+-- Selects the Converter tab. Returns false when the Auction House isn't open.
 function AHTab:SelectTab()
   if not self:IsAvailable() then
     return false
   end
-  local ok = pcall(function()
-    GetLib():SetSelected(TAB_ID)
-  end)
-  return ok
+  GetLib():SetSelected(TAB_ID)
+  return true
 end

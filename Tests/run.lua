@@ -93,28 +93,33 @@ local function searchString(fields)
   }, DIVIDER)
 end
 
+-- name -> raw search strings, read and written through the fake API.v1.
 local currentList = {}
-
--- Backs the fake ListManager's GetByName/ClearList path: name -> { items = { ... } }.
--- Item contents don't matter to ClearList, only the count and that DeleteItem
--- actually removes the right one.
-local shoppingLists = {}
-
-local function makeShoppingList(name)
-  return {
-    GetName = function() return name end,
-    GetItemCount = function() return #shoppingLists[name].items end,
-    DeleteItem = function(_, index)
-      table.remove(shoppingLists[name].items, index)
-    end,
-  }
-end
 
 Auctionator = {
   API = {
     v1 = {
+      -- Like the real API, raises for a list that doesn't exist.
       GetShoppingListItems = function(_, listName)
-        return currentList[listName]
+        local items = currentList[listName]
+        if not items then
+          error("List does not exist: " .. tostring(listName))
+        end
+        local copy = {}
+        for i, item in ipairs(items) do copy[i] = item end
+        return copy
+      end,
+      DeleteShoppingListItem = function(_, listName, item)
+        local items = currentList[listName]
+        if not items then
+          error("List does not exist: " .. tostring(listName))
+        end
+        for i, existing in ipairs(items) do
+          if existing == item then
+            table.remove(items, i)
+            return
+          end
+        end
       end,
       ConvertFromSearchString = function(_, raw)
         local parts = {}
@@ -145,13 +150,6 @@ Auctionator = {
   Shopping = {
     ListManager = {
       GetCount = function() return 0 end,
-      GetByIndex = function() return nil end,
-      GetByName = function(_, name)
-        if not shoppingLists[name] then
-          return nil
-        end
-        return makeShoppingList(name)
-      end,
     },
   },
 }
@@ -342,14 +340,14 @@ end
 --------------------------------------------------------------------------
 
 do
-  shoppingLists["Test"] = { items = { "a", "b", "c" } }
+  currentList["Test"] = { "a", "b", "a" }
   equals(ns.Converter:GetShoppingListItemCount("Test"), 3,
     "item count reflects the list's current contents")
 
   local cleared = ns.Converter:ClearList("Test")
   check(cleared, "ClearList reports success when items were removed")
   equals(ns.Converter:GetShoppingListItemCount("Test"), 0, "ClearList empties every item")
-  equals(#shoppingLists["Test"].items, 0, "every item is actually gone, not just uncounted")
+  equals(#currentList["Test"], 0, "every item is actually gone, not just uncounted")
 end
 
 do

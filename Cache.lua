@@ -1,20 +1,14 @@
 local ADDON_NAME, ns = ...
 
 --------------------------------------------------------------------------
--- Persistent (name, tier) -> itemID cache
---
--- Resolving an item name to an itemID is the expensive part of a
--- conversion: without a cache it can cost a live Auction House browse query
--- per item, serialized with a courtesy delay between each. The mapping is
--- stable for the lifetime of a game build, so it's worth keeping across
--- sessions and wiping wholesale when the client updates.
+-- Persistent (name, tier) -> itemID cache, saving live AH queries. Stable
+-- within a game build, so it is wiped when the build changes.
 --------------------------------------------------------------------------
 
 local Cache = {}
 ns.Cache = Cache
 
--- Well past a realistic craft queue, but bounded so a pathological amount of
--- churn can't grow SavedVariables without limit.
+-- Bounds SavedVariables growth.
 local MAX_ENTRIES = 5000
 
 local SEPARATOR = "\30"
@@ -29,9 +23,8 @@ local function Store()
   return store
 end
 
--- Drops everything if the client build changed since the cache was written.
--- Item IDs don't move within a build, but a patch can add quality ranks or
--- rename items, and a stale hit is worse than no hit at all.
+-- Drops everything if the client build changed: a patch can add quality
+-- ranks or rename items.
 function Cache:Prepare()
   local store = Store()
   local build = select(2, GetBuildInfo())
@@ -67,8 +60,7 @@ function Cache:Set(name, tier, itemID)
 
   if store.entries[key] == nil then
     if store.count >= MAX_ENTRIES then
-      -- No usage data to evict on, so start over rather than keep an
-      -- arbitrary subset. Refilling costs at most one conversion.
+      -- No usage data to evict on, so start over.
       store.entries = {}
       store.count = 0
     end

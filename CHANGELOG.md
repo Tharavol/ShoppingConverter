@@ -11,7 +11,7 @@ Auctionator is required; CraftSim and TradeSkillMaster are optional.
 `/shopconv help` lists the commands. Source, issues and release notes:
 https://github.com/Tharavol/ShoppingConverter
 
-## [Unreleased]
+## [1.9.0]
 
 ### Added
 - Loads on World of Warcraft: Forever as well as retail: the TOC now lists Interface 16001 (#44).

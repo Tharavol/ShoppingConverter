@@ -11,7 +11,7 @@ Auctionator is required; CraftSim and TradeSkillMaster are optional.
 `/shopconv help` lists the commands. Source, issues and release notes:
 https://github.com/Tharavol/ShoppingConverter
 
-## [1.9.0]
+## [1.9.0] - 2026-11-21
 
 ### Added
 - Loads on World of Warcraft: Forever as well as retail: the TOC now lists Interface 16001 (#44).
@@ -28,7 +28,7 @@ https://github.com/Tharavol/ShoppingConverter
   file (#42).
 - The daily TOC Interface check now tracks both the retail and WoW Forever versions, so its bump no longer rewrites the Interface line to retail only (#45).
 
-## [1.8.1]
+## [1.8.1] - 2026-10-30
 
 ### Fixed
 - The Auction House tab row could run past the window edge, with the
@@ -48,7 +48,7 @@ https://github.com/Tharavol/ShoppingConverter
 - The output box's text area now follows the box when the window widens
   while the tab is open, and wrapped text no longer runs under the scroll bar.
 
-## [1.8.0]
+## [1.8.0] - 2026-09-23
 
 ### Added
 - **Clear List** button next to Refresh on the Converter tab, and a matching
@@ -66,12 +66,12 @@ https://github.com/Tharavol/ShoppingConverter
   the button and the slash command always ask for confirmation first,
   naming the specific list, before anything is removed.
 
-## [1.7.1]
+## [1.7.1] - 2026-08-11
 
 ### Added
 - Icon (`INV_Inscription_ParchmentVar06`) for the AddOns list and AddonCompartment button
 
-## [1.7.0]
+## [1.7.0] - 2026-08-11
 
 ### Changed
 - Adopt the cross-addon slash command standard (#36): bare `/shopconv` now opens the settings panel instead of jumping to the Converter tab; the old jump moves to `/shopconv tab`. Added `config`/`gui` aliases for `options`, plus `help`, `status`, `version` and `reset` commands
@@ -79,14 +79,14 @@ https://github.com/Tharavol/ShoppingConverter
 - An unrecognised command now says which word wasn't understood instead of silently falling back to the usage text
 - `debug`, `craftsim`, `login` and `cache`'s on/off argument now reject an unrecognised value with an error instead of silently leaving the setting unchanged and reporting it as though the value had applied
 
-## [1.6.3]
+## [1.6.3] - 2026-08-11
 
 ### Changed
 - Bump TOC Interface to 120100 for WoW 12.1.0
 - Exclude CHANGELOG.md from the packaged zip
 - Add X-ReleaseNotes with the addon summary and repository link
 
-## [1.6.2]
+## [1.6.2] - 2026-08-08
 
 ### Fixed
 - The Auction House tab row could still occasionally run off the right
@@ -108,7 +108,7 @@ https://github.com/Tharavol/ShoppingConverter
   near-simultaneous tab additions (TSM, Auctionator, this addon, and
   others) that can each trigger their own resize in quick succession.
 
-## [1.6.1]
+## [1.6.1] - 2026-08-07
 
 ### Added
 - `/shopconv debug on/off`, and a matching "Show diagnostic messages"
@@ -127,7 +127,7 @@ https://github.com/Tharavol/ShoppingConverter
   nothing to reveal why. The addon now reacts to each tab as it's actually
   added instead of guessing at a fixed delay after the Auction House opens.
 
-## [1.6.0]
+## [1.6.0] - 2026-08-05
 
 ### Added
 - Settings panel (Blizzard Settings -> AddOns -> Shopping Converter) for
@@ -165,7 +165,7 @@ https://github.com/Tharavol/ShoppingConverter
   was — but it's a real latent bug in its own right and worth having
   either way.)
 
-## [1.5.0]
+## [1.5.0] - 2026-08-05
 
 Packaging and internals only — no player-visible change.
 
@@ -182,7 +182,7 @@ Packaging and internals only — no player-visible change.
   or Wago, and the unused env vars implied a distribution path that wasn't
   actually configured.
 
-## [1.4.0]
+## [1.4.0] - 2026-08-05
 
 ### Fixed
 - The version shown in the AH tab and at login was wrong in every build
@@ -208,7 +208,7 @@ Packaging and internals only — no player-visible change.
   (like the version doubling above) is caught on every pull request instead
   of only once a release is already being cut.
 
-## [1.3.2]
+## [1.3.2] - 2026-08-01
 
 Packaging and tooling only — no functional changes.
 
@@ -217,7 +217,7 @@ Packaging and tooling only — no functional changes.
 - The version in the TOC now comes from the release tag rather than being maintained by hand, so it can no longer disagree with the release it was published under. Versions now carry a leading `v`.
 - Added GitHub Actions running luacheck and the offline test suite on every push and pull request.
 
-## [1.3.1]
+## [1.3.1] - 2026-07-26
 
 ### Changed
 - The output box now takes focus and selects its text as soon as a
@@ -226,7 +226,7 @@ Packaging and tooling only — no functional changes.
   from stealing focus when the tab merely opens - that still applies, since
   opening the tab isn't the player asking for the string.
 
-## [1.3.0]
+## [1.3.0] - 2026-07-26
 
 ### Added
 - Item IDs are now read directly from CraftSim's craft queue when CraftSim
@@ -298,7 +298,7 @@ Packaging and tooling only — no functional changes.
 - Release notes are no longer duplicated in the `.toc`; this file is the
   only copy.
 
-## [1.2.2]
+## [1.2.2] - 2026-07-26
 
 ### Added
 - The addon version now shows in the bottom-right corner of the
@@ -306,7 +306,7 @@ Packaging and tooling only — no functional changes.
 - MIT `LICENSE` file for the addon's own code, separate from the
   third-party license notices in `ATTRIBUTIONS.md`.
 
-## [1.2.1]
+## [1.2.1] - 2026-07-20
 
 ### Fixed
 - Item resolver hanging forever: it registered for an event
